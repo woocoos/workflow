@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1w1uevi" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.8.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.2.0">
+    <bpmn:process id="multi-user-task" isExecutable="true">
+        <bpmn:startEvent id="StartEvent_1">
+            <bpmn:outgoing>Flow_1eumixy</bpmn:outgoing>
+        </bpmn:startEvent>
+        <bpmn:sequenceFlow id="Flow_1eumixy" sourceRef="StartEvent_1" targetRef="Activity_0jers4e" />
+        <bpmn:userTask id="Activity_0jers4e" name="MultiInstance">
+            <bpmn:extensionElements>
+                <zeebe:assignmentDefinition candidateUsers="admin,user1,user2" />
+            </bpmn:extensionElements>
+            <bpmn:incoming>Flow_1eumixy</bpmn:incoming>
+            <bpmn:outgoing>Flow_0lgore6</bpmn:outgoing>
+            <bpmn:multiInstanceLoopCharacteristics>
+                <bpmn:extensionElements>
+                    <zeebe:loopCharacteristics inputCollection="=candidateUsers" />
+                </bpmn:extensionElements>
+                <bpmn:completionCondition xsi:type="bpmn:tFormalExpression">=numberOfCompletedInstances / numberOfInstances &gt;= 0.5</bpmn:completionCondition>
+            </bpmn:multiInstanceLoopCharacteristics>
+        </bpmn:userTask>
+        <bpmn:endEvent id="Event_16sapv9">
+            <bpmn:incoming>Flow_0lgore6</bpmn:incoming>
+        </bpmn:endEvent>
+        <bpmn:sequenceFlow id="Flow_0lgore6" sourceRef="Activity_0jers4e" targetRef="Event_16sapv9" />
+    </bpmn:process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+        <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_132b0cj">
+            <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+                <dc:Bounds x="179" y="99" width="36" height="36" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Activity_1cmyxl8_di" bpmnElement="Activity_0jers4e">
+                <dc:Bounds x="270" y="77" width="100" height="80" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_16sapv9_di" bpmnElement="Event_16sapv9">
+                <dc:Bounds x="432" y="99" width="36" height="36" />
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="Flow_1eumixy_di" bpmnElement="Flow_1eumixy">
+                <di:waypoint x="215" y="117" />
+                <di:waypoint x="270" y="117" />
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_0lgore6_di" bpmnElement="Flow_0lgore6">
+                <di:waypoint x="370" y="117" />
+                <di:waypoint x="432" y="117" />
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</bpmn:definitions>

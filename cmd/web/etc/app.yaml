@@ -1,0 +1,52 @@
+namespace: default
+appName: workflow-api
+version: 0.0.1
+development: true
+
+authz:
+  watcherOptions:
+    options:
+      addr: "127.0.0.1:6379"
+      channel: "/casbin"
+  model: "etc/rbac_model.conf"
+
+web:
+  server:
+    addr: 127.0.0.1:8081
+  engine:
+    contextWithFallback: true
+    routerGroups:
+      - default:
+          middlewares:
+            - accessLog:
+                exclude:
+                  - ""
+                  - IntrospectionQuery
+            - recovery:
+            - jwt:
+                signingMethod: "HS256"
+                signingKey: "secret"
+                exclude:
+                  - "/" #doc page
+            - tenant:
+              type: int
+            - graphql:
+                withAuthorization: false
+                appCode: "wf"
+
+store:
+  portal:
+    driverName: mysql
+    dsn: "root:@tcp(localhost:3306)/portal?parseTime=true&loc=Local"
+  workflow:
+    driverName: mysql
+    dsn: "root:@tcp(localhost:3306)/workflow?parseTime=true&loc=Local"
+snowflake:
+
+temporal:
+  taskQueue: approval
+  clientOptions:
+    hostPort: localhost:7233
+workflow:
+  # 流程部署共享文件夹,可选择用文件存储
+  deploymentDir: ./tmp

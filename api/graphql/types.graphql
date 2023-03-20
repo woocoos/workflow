@@ -1,0 +1,51 @@
+scalar Upload
+
+input UploadFile {
+    id: Int!
+    file: Upload!
+}
+
+input DeployDiagramInput {
+    """部署名称"""
+    name: String!
+    """租户ID,根组织ID"""
+    orgID: ID!
+    """所属应用"""
+    appID: ID!
+    """流程文件"""
+    files: [UploadFile!]!
+}
+
+input StartProcessInput {
+    """流程定义ID"""
+    procDefKey: String!
+    """租户ID,根组织ID"""
+    orgID: ID!
+    """符合woocoos定义的资源编码"""
+    ResID: String!
+    """流程变量"""
+    variables: [VariableInput!]
+}
+
+input VariableInput {
+"""变量名称"""
+    name: String!
+    """变量类型"""
+    type: String!
+    """变量值"""
+    value: String!
+}
+
+type WorkflowRun {
+    """工作流ID,可通过该ID对工作流进行操作,一般是业务的ID"""
+    id: String!
+    """工作流执行"""
+    runID: String
+}
+
+input WorkflowRunInput {
+    """工作流ID,可通过该ID对工作流进行操作,一般是业务的ID"""
+    id: String!
+    """工作流执行"""
+    runID: String
+}

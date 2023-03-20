@@ -1,0 +1,14 @@
+type Mutation {
+    """上传部署流程图"""
+    deployDiagram(input: DeployDiagramInput!): Deployment
+    """启动工作流实例"""
+    startProcessInstance(input: StartProcessInput!): WorkflowRun!
+    """启动指定工作流实例"""
+    startWorkflow(input: WorkflowRunInput!): Boolean!
+    """认领任务"""
+    claimTask(taskID: ID!): Boolean!
+    """完成任务"""
+    completeTask(input: UpdateIdentityLinkInput!): Boolean!
+    """放弃任务"""
+    abandonTask(taskID: ID!): Boolean!
+}

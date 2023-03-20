@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/" id="invoiceBusinessDecisions" name="Invoice Classification" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.8.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.2.0">
+  <decision id="invoiceClassification" name="InvoiceClassification">
+    <informationRequirement id="InformationRequirement_1kky1y1">
+      <requiredDecision href="#abs" />
+    </informationRequirement>
+    <decisionTable id="DecisionTable_1dqdt3d">
+      <input id="Input_1" label="Invoice Amount">
+        <inputExpression id="InputExpression_1" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_0qe25wr" label="Invoice Category">
+        <inputExpression id="LiteralExpression_0gj88ok" typeRef="string">
+          <text>invoiceCategory</text>
+        </inputExpression>
+        <inputValues id="UnaryTests_1f6z2s5">
+          <text>"Travel Expenses","Misc","Software License Costs"</text>
+        </inputValues>
+      </input>
+      <output id="OutputClause_0qsbxtl" label="Classification" name="invoiceClassification" typeRef="string">
+        <outputValues id="UnaryTests_0k9cue1">
+          <text>"day-to-day expense","budget","exceptional"</text>
+        </outputValues>
+      </output>
+      <rule id="DecisionRule_0t76sbq">
+        <inputEntry id="UnaryTests_13i1qm0">
+          <text>&lt; 250</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_01ek5ln">
+          <text>"Misc"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0fboxyl">
+          <text>"day-to-day expense"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_0ajz7ip">
+        <inputEntry id="UnaryTests_0dc68uu">
+          <text>[250..1000]</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0iku7c8">
+          <text>"Misc"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0rgfw0c">
+          <text>"budget"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_0x3zivx">
+        <inputEntry id="UnaryTests_0uprnbo">
+          <text>&gt; 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0f2a5qp">
+          <text>"Misc"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1qemx57">
+          <text>"exceptional"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_09aaeb2">
+        <inputEntry id="UnaryTests_1r0huds">
+          <text></text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_064gy9i">
+          <text>"Travel Expenses"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_04i5nax">
+          <text>"day-to-day expense"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_0j0suuc">
+        <inputEntry id="UnaryTests_0sdkgvz">
+          <text></text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_0lygbha">
+          <text>"Software License Costs"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1uvj6b1">
+          <text>"budget"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <decision id="invoice-assign-approver" name="Assign Approver Group">
+    <informationRequirement id="InformationRequirement_1l9ud4n">
+      <requiredDecision href="#invoiceClassification" />
+    </informationRequirement>
+    <informationRequirement id="InformationRequirement_1lzyjb0">
+      <requiredDecision href="#Decision_0ejpfkr" />
+    </informationRequirement>
+    <decisionTable id="DecisionTable_1r841h3" hitPolicy="COLLECT">
+      <input id="InputClause_1n9m5qh" label="Invoice Classification">
+        <inputExpression id="LiteralExpression_0r60fuy" typeRef="string">
+          <text>invoiceClassification</text>
+        </inputExpression>
+        <inputValues id="UnaryTests_0f7nap8">
+          <text>"day-to-day expense","budget","exceptional"</text>
+        </inputValues>
+      </input>
+      <output id="OutputClause_02a0phs" label="Approver Group" name="result" typeRef="string">
+        <outputValues id="UnaryTests_0v8qpdt">
+          <text>"accounting","sales","management"</text>
+        </outputValues>
+      </output>
+      <rule id="DecisionRule_0wew9px">
+        <inputEntry id="UnaryTests_1gf3k1h">
+          <text>"day-to-day expense"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1t8sjws">
+          <text>"accounting"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_03ccll0">
+        <inputEntry id="UnaryTests_1wu8lhr">
+          <text>"day-to-day expense"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1ge3a5e">
+          <text>"sales"</text>
+        </outputEntry>
+      </rule>
+      <rule id="DecisionRule_042pjne">
+        <inputEntry id="UnaryTests_14zw1fp">
+          <text>"budget", "exceptional"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_0tems7g">
+          <text>"management"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <decision id="abs" name="Abs">
+    <variable id="InformationItem_0fb1ibu" name="abs" typeRef="number" />
+    <literalExpression id="LiteralExpression_0z6sclm">
+      <text>abs(10)</text>
+    </literalExpression>
+  </decision>
+  <decision id="Decision_0ejpfkr" name="user">
+    <variable id="InformationItem_0y72uo9" name="userName" typeRef="string" />
+    <literalExpression id="LiteralExpression_0ubmur3">
+      <text>"abc"+"cdf"</text>
+    </literalExpression>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="invoiceClassification">
+        <dc:Bounds height="80" width="180" x="160" y="260" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="DMNEdge_1283rb0" dmnElementRef="InformationRequirement_1l9ud4n">
+        <di:waypoint x="250" y="260" />
+        <di:waypoint x="340" y="200" />
+        <di:waypoint x="340" y="180" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="DMNShape_0zic5bv" dmnElementRef="invoice-assign-approver">
+        <dc:Bounds height="80" width="180" x="280" y="100" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="DMNEdge_15f0ymu" dmnElementRef="InformationRequirement_1kky1y1">
+        <di:waypoint x="250" y="430" />
+        <di:waypoint x="250" y="360" />
+        <di:waypoint x="250" y="340" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="DMNShape_1qkfenj" dmnElementRef="abs">
+        <dc:Bounds height="80" width="180" x="160" y="430" />
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="DMNEdge_1oofhez" dmnElementRef="InformationRequirement_1lzyjb0">
+        <di:waypoint x="560" y="260" />
+        <di:waypoint x="400" y="200" />
+        <di:waypoint x="400" y="180" />
+      </dmndi:DMNEdge>
+      <dmndi:DMNShape id="DMNShape_0yf4np9" dmnElementRef="Decision_0ejpfkr">
+        <dc:Bounds height="80" width="180" x="470" y="260" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>
