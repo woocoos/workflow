@@ -15,13 +15,15 @@ import (
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ProcInstQuery is the builder for querying ProcInst entities.
 type ProcInstQuery struct {
 	config
 	ctx            *QueryContext
-	order          []OrderFunc
+	order          []procinst.OrderOption
 	inters         []Interceptor
 	predicates     []predicate.ProcInst
 	withProcDef    *ProcDefQuery
@@ -60,7 +62,7 @@ func (piq *ProcInstQuery) Unique(unique bool) *ProcInstQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (piq *ProcInstQuery) Order(o ...OrderFunc) *ProcInstQuery {
+func (piq *ProcInstQuery) Order(o ...procinst.OrderOption) *ProcInstQuery {
 	piq.order = append(piq.order, o...)
 	return piq
 }
@@ -81,6 +83,9 @@ func (piq *ProcInstQuery) QueryProcDef() *ProcDefQuery {
 			sqlgraph.To(procdef.Table, procdef.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, procinst.ProcDefTable, procinst.ProcDefColumn),
 		)
+		schemaConfig := piq.schemaConfig
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcInst
 		fromU = sqlgraph.SetNeighbors(piq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -103,6 +108,9 @@ func (piq *ProcInstQuery) QueryTasks() *TaskQuery {
 			sqlgraph.To(task.Table, task.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, procinst.TasksTable, procinst.TasksColumn),
 		)
+		schemaConfig := piq.schemaConfig
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.Task
 		fromU = sqlgraph.SetNeighbors(piq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -298,7 +306,7 @@ func (piq *ProcInstQuery) Clone() *ProcInstQuery {
 	return &ProcInstQuery{
 		config:      piq.config,
 		ctx:         piq.ctx.Clone(),
-		order:       append([]OrderFunc{}, piq.order...),
+		order:       append([]procinst.OrderOption{}, piq.order...),
 		inters:      append([]Interceptor{}, piq.inters...),
 		predicates:  append([]predicate.ProcInst{}, piq.predicates...),
 		withProcDef: piq.withProcDef.Clone(),
@@ -423,6 +431,8 @@ func (piq *ProcInstQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Pr
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = piq.schemaConfig.ProcInst
+	ctx = internal.NewSchemaConfigContext(ctx, piq.schemaConfig)
 	if len(piq.modifiers) > 0 {
 		_spec.Modifiers = piq.modifiers
 	}
@@ -502,8 +512,11 @@ func (piq *ProcInstQuery) loadTasks(ctx context.Context, query *TaskQuery, nodes
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(task.FieldProcInstID)
+	}
 	query.Where(predicate.Task(func(s *sql.Selector) {
-		s.Where(sql.InValues(procinst.TasksColumn, fks...))
+		s.Where(sql.InValues(s.C(procinst.TasksColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -513,7 +526,7 @@ func (piq *ProcInstQuery) loadTasks(ctx context.Context, query *TaskQuery, nodes
 		fk := n.ProcInstID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "proc_inst_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "proc_inst_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -522,6 +535,8 @@ func (piq *ProcInstQuery) loadTasks(ctx context.Context, query *TaskQuery, nodes
 
 func (piq *ProcInstQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := piq.querySpec()
+	_spec.Node.Schema = piq.schemaConfig.ProcInst
+	ctx = internal.NewSchemaConfigContext(ctx, piq.schemaConfig)
 	if len(piq.modifiers) > 0 {
 		_spec.Modifiers = piq.modifiers
 	}
@@ -547,6 +562,9 @@ func (piq *ProcInstQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != procinst.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if piq.withProcDef != nil {
+			_spec.Node.AddColumnOnce(procinst.FieldProcDefID)
 		}
 	}
 	if ps := piq.predicates; len(ps) > 0 {
@@ -587,6 +605,9 @@ func (piq *ProcInstQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if piq.ctx.Unique != nil && *piq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(piq.schemaConfig.ProcInst)
+	ctx = internal.NewSchemaConfigContext(ctx, piq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range piq.predicates {
 		p(selector)
 	}

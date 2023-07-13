@@ -4,11 +4,13 @@ package procdef
 
 import (
 	"fmt"
-	"io"
-	"strconv"
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/99designs/gqlgen/graphql"
+	"github.com/woocoos/entco/schemax/typex"
 )
 
 const (
@@ -24,10 +26,10 @@ const (
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldDeploymentID holds the string denoting the deployment_id field in the database.
 	FieldDeploymentID = "deployment_id"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
 	// FieldAppID holds the string denoting the app_id field in the database.
 	FieldAppID = "app_id"
 	// FieldCategory holds the string denoting the category field in the database.
@@ -42,14 +44,12 @@ const (
 	FieldRevision = "revision"
 	// FieldVersionTag holds the string denoting the version_tag field in the database.
 	FieldVersionTag = "version_tag"
-	// FieldResourceName holds the string denoting the resource_name field in the database.
-	FieldResourceName = "resource_name"
-	// FieldDgrmResourceName holds the string denoting the dgrm_resource_name field in the database.
-	FieldDgrmResourceName = "dgrm_resource_name"
+	// FieldResourceKey holds the string denoting the resource_key field in the database.
+	FieldResourceKey = "resource_key"
+	// FieldResourceID holds the string denoting the resource_id field in the database.
+	FieldResourceID = "resource_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldResourceData holds the string denoting the resource_data field in the database.
-	FieldResourceData = "resource_data"
 	// EdgeDeployment holds the string denoting the deployment edge name in mutations.
 	EdgeDeployment = "deployment"
 	// EdgeProcInstances holds the string denoting the proc_instances edge name in mutations.
@@ -79,8 +79,8 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
+	FieldTenantID,
 	FieldDeploymentID,
-	FieldOrgID,
 	FieldAppID,
 	FieldCategory,
 	FieldName,
@@ -88,10 +88,9 @@ var Columns = []string{
 	FieldVersion,
 	FieldRevision,
 	FieldVersionTag,
-	FieldResourceName,
-	FieldDgrmResourceName,
+	FieldResourceKey,
+	FieldResourceID,
 	FieldStatus,
-	FieldResourceData,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -110,53 +109,152 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
-	Hooks [2]ent.Hook
+	Hooks        [3]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() int
 )
 
-// Status defines the type for the "status" enum field.
-type Status string
-
-// StatusActive is the default value of the Status enum.
-const DefaultStatus = StatusActive
-
-// Status values.
-const (
-	StatusActive    Status = "active"
-	StatusSuspended Status = "suspended"
-)
-
-func (s Status) String() string {
-	return string(s)
-}
+const DefaultStatus typex.SimpleStatus = "active"
 
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
-func StatusValidator(s Status) error {
-	switch s {
-	case StatusActive, StatusSuspended:
+func StatusValidator(s typex.SimpleStatus) error {
+	switch s.String() {
+	case "active", "inactive", "processing":
 		return nil
 	default:
 		return fmt.Errorf("procdef: invalid enum value for status field: %q", s)
 	}
 }
 
-// MarshalGQL implements graphql.Marshaler interface.
-func (e Status) MarshalGQL(w io.Writer) {
-	io.WriteString(w, strconv.Quote(e.String()))
+// OrderOption defines the ordering options for the ProcDef queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// UnmarshalGQL implements graphql.Unmarshaler interface.
-func (e *Status) UnmarshalGQL(val interface{}) error {
-	str, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("enum %T must be a string", val)
-	}
-	*e = Status(str)
-	if err := StatusValidator(*e); err != nil {
-		return fmt.Errorf("%s is not a valid Status", str)
-	}
-	return nil
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
 }
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedBy orders the results by the updated_by field.
+func ByUpdatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedBy, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByDeploymentID orders the results by the deployment_id field.
+func ByDeploymentID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeploymentID, opts...).ToFunc()
+}
+
+// ByAppID orders the results by the app_id field.
+func ByAppID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAppID, opts...).ToFunc()
+}
+
+// ByCategory orders the results by the category field.
+func ByCategory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCategory, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByKey orders the results by the key field.
+func ByKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKey, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+}
+
+// ByRevision orders the results by the revision field.
+func ByRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRevision, opts...).ToFunc()
+}
+
+// ByVersionTag orders the results by the version_tag field.
+func ByVersionTag(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersionTag, opts...).ToFunc()
+}
+
+// ByResourceKey orders the results by the resource_key field.
+func ByResourceKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldResourceKey, opts...).ToFunc()
+}
+
+// ByResourceID orders the results by the resource_id field.
+func ByResourceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldResourceID, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByDeploymentField orders the results by deployment field.
+func ByDeploymentField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDeploymentStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByProcInstancesCount orders the results by proc_instances count.
+func ByProcInstancesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProcInstancesStep(), opts...)
+	}
+}
+
+// ByProcInstances orders the results by proc_instances terms.
+func ByProcInstances(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProcInstancesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newDeploymentStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DeploymentInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, DeploymentTable, DeploymentColumn),
+	)
+}
+func newProcInstancesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProcInstancesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProcInstancesTable, ProcInstancesColumn),
+	)
+}
+
+var (
+	// typex.SimpleStatus must implement graphql.Marshaler.
+	_ graphql.Marshaler = (*typex.SimpleStatus)(nil)
+	// typex.SimpleStatus must implement graphql.Unmarshaler.
+	_ graphql.Unmarshaler = (*typex.SimpleStatus)(nil)
+)

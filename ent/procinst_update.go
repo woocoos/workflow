@@ -15,6 +15,8 @@ import (
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ProcInstUpdate is the builder for updating ProcInst entities.
@@ -317,7 +319,7 @@ func (piu *ProcInstUpdate) RemoveTasks(t ...*Task) *ProcInstUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (piu *ProcInstUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks[int, ProcInstMutation](ctx, piu.sqlSave, piu.mutation, piu.hooks)
+	return withHooks(ctx, piu.sqlSave, piu.mutation, piu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -450,12 +452,10 @@ func (piu *ProcInstUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procinst.ProcDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piu.schemaConfig.ProcInst
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := piu.mutation.ProcDefIDs(); len(nodes) > 0 {
@@ -466,12 +466,10 @@ func (piu *ProcInstUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procinst.ProcDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piu.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -485,12 +483,10 @@ func (piu *ProcInstUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piu.schemaConfig.Task
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := piu.mutation.RemovedTasksIDs(); len(nodes) > 0 && !piu.mutation.TasksCleared() {
@@ -501,12 +497,10 @@ func (piu *ProcInstUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piu.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -520,17 +514,17 @@ func (piu *ProcInstUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piu.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = piu.schemaConfig.ProcInst
+	ctx = internal.NewSchemaConfigContext(ctx, piu.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, piu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{procinst.Label}
@@ -851,7 +845,7 @@ func (piuo *ProcInstUpdateOne) Select(field string, fields ...string) *ProcInstU
 
 // Save executes the query and returns the updated ProcInst entity.
 func (piuo *ProcInstUpdateOne) Save(ctx context.Context) (*ProcInst, error) {
-	return withHooks[*ProcInst, ProcInstMutation](ctx, piuo.sqlSave, piuo.mutation, piuo.hooks)
+	return withHooks(ctx, piuo.sqlSave, piuo.mutation, piuo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -1001,12 +995,10 @@ func (piuo *ProcInstUpdateOne) sqlSave(ctx context.Context) (_node *ProcInst, er
 			Columns: []string{procinst.ProcDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piuo.schemaConfig.ProcInst
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := piuo.mutation.ProcDefIDs(); len(nodes) > 0 {
@@ -1017,12 +1009,10 @@ func (piuo *ProcInstUpdateOne) sqlSave(ctx context.Context) (_node *ProcInst, er
 			Columns: []string{procinst.ProcDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piuo.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -1036,12 +1026,10 @@ func (piuo *ProcInstUpdateOne) sqlSave(ctx context.Context) (_node *ProcInst, er
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piuo.schemaConfig.Task
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := piuo.mutation.RemovedTasksIDs(); len(nodes) > 0 && !piuo.mutation.TasksCleared() {
@@ -1052,12 +1040,10 @@ func (piuo *ProcInstUpdateOne) sqlSave(ctx context.Context) (_node *ProcInst, er
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piuo.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -1071,17 +1057,17 @@ func (piuo *ProcInstUpdateOne) sqlSave(ctx context.Context) (_node *ProcInst, er
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = piuo.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = piuo.schemaConfig.ProcInst
+	ctx = internal.NewSchemaConfigContext(ctx, piuo.schemaConfig)
 	_node = &ProcInst{config: piuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -5,14 +5,15 @@ package runtime
 import (
 	"time"
 
+	"github.com/woocoos/workflow/codegen/entgen/schema"
 	"github.com/woocoos/workflow/ent/decisiondef"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
-	"github.com/woocoos/workflow/graph/entgen/schema"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -21,7 +22,11 @@ import (
 func init() {
 	decisiondefMixin := schema.DecisionDef{}.Mixin()
 	decisiondefMixinHooks1 := decisiondefMixin[1].Hooks()
+	decisiondefMixinHooks2 := decisiondefMixin[2].Hooks()
 	decisiondef.Hooks[0] = decisiondefMixinHooks1[0]
+	decisiondef.Hooks[1] = decisiondefMixinHooks2[0]
+	decisiondefMixinInters2 := decisiondefMixin[2].Interceptors()
+	decisiondef.Interceptors[0] = decisiondefMixinInters2[0]
 	decisiondefMixinFields0 := decisiondefMixin[0].Fields()
 	_ = decisiondefMixinFields0
 	decisiondefMixinFields1 := decisiondefMixin[1].Fields()
@@ -38,7 +43,11 @@ func init() {
 	decisiondef.DefaultID = decisiondefDescID.Default.(func() int)
 	decisionreqdefMixin := schema.DecisionReqDef{}.Mixin()
 	decisionreqdefMixinHooks1 := decisionreqdefMixin[1].Hooks()
+	decisionreqdefMixinHooks2 := decisionreqdefMixin[2].Hooks()
 	decisionreqdef.Hooks[0] = decisionreqdefMixinHooks1[0]
+	decisionreqdef.Hooks[1] = decisionreqdefMixinHooks2[0]
+	decisionreqdefMixinInters2 := decisionreqdefMixin[2].Interceptors()
+	decisionreqdef.Interceptors[0] = decisionreqdefMixinInters2[0]
 	decisionreqdefMixinFields0 := decisionreqdefMixin[0].Fields()
 	_ = decisionreqdefMixinFields0
 	decisionreqdefMixinFields1 := decisionreqdefMixin[1].Fields()
@@ -55,7 +64,11 @@ func init() {
 	decisionreqdef.DefaultID = decisionreqdefDescID.Default.(func() int)
 	deploymentMixin := schema.Deployment{}.Mixin()
 	deploymentMixinHooks1 := deploymentMixin[1].Hooks()
+	deploymentMixinHooks2 := deploymentMixin[2].Hooks()
 	deployment.Hooks[0] = deploymentMixinHooks1[0]
+	deployment.Hooks[1] = deploymentMixinHooks2[0]
+	deploymentMixinInters2 := deploymentMixin[2].Interceptors()
+	deployment.Interceptors[0] = deploymentMixinInters2[0]
 	deploymentMixinFields0 := deploymentMixin[0].Fields()
 	_ = deploymentMixinFields0
 	deploymentMixinFields1 := deploymentMixin[1].Fields()
@@ -67,7 +80,7 @@ func init() {
 	// deployment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	deployment.DefaultCreatedAt = deploymentDescCreatedAt.Default.(func() time.Time)
 	// deploymentDescDeployTime is the schema descriptor for deploy_time field.
-	deploymentDescDeployTime := deploymentFields[4].Descriptor()
+	deploymentDescDeployTime := deploymentFields[3].Descriptor()
 	// deployment.DefaultDeployTime holds the default value on creation for the deploy_time field.
 	deployment.DefaultDeployTime = deploymentDescDeployTime.Default.(func() time.Time)
 	// deploymentDescID is the schema descriptor for id field.
@@ -75,6 +88,10 @@ func init() {
 	// deployment.DefaultID holds the default value on creation for the id field.
 	deployment.DefaultID = deploymentDescID.Default.(func() int)
 	identitylinkMixin := schema.IdentityLink{}.Mixin()
+	identitylinkMixinHooks1 := identitylinkMixin[1].Hooks()
+	identitylink.Hooks[0] = identitylinkMixinHooks1[0]
+	identitylinkMixinInters1 := identitylinkMixin[1].Interceptors()
+	identitylink.Interceptors[0] = identitylinkMixinInters1[0]
 	identitylinkMixinFields0 := identitylinkMixin[0].Fields()
 	_ = identitylinkMixinFields0
 	identitylinkFields := schema.IdentityLink{}.Fields()
@@ -83,11 +100,21 @@ func init() {
 	identitylinkDescID := identitylinkMixinFields0[0].Descriptor()
 	// identitylink.DefaultID holds the default value on creation for the id field.
 	identitylink.DefaultID = identitylinkDescID.Default.(func() int)
+	orguserFields := schema.OrgUser{}.Fields()
+	_ = orguserFields
+	// orguserDescJoinedAt is the schema descriptor for joined_at field.
+	orguserDescJoinedAt := orguserFields[2].Descriptor()
+	// orguser.DefaultJoinedAt holds the default value on creation for the joined_at field.
+	orguser.DefaultJoinedAt = orguserDescJoinedAt.Default.(func() time.Time)
 	procdefMixin := schema.ProcDef{}.Mixin()
 	procdefMixinHooks1 := procdefMixin[1].Hooks()
+	procdefMixinHooks2 := procdefMixin[2].Hooks()
 	procdefHooks := schema.ProcDef{}.Hooks()
 	procdef.Hooks[0] = procdefMixinHooks1[0]
-	procdef.Hooks[1] = procdefHooks[0]
+	procdef.Hooks[1] = procdefMixinHooks2[0]
+	procdef.Hooks[2] = procdefHooks[0]
+	procdefMixinInters2 := procdefMixin[2].Interceptors()
+	procdef.Interceptors[0] = procdefMixinInters2[0]
 	procdefMixinFields0 := procdefMixin[0].Fields()
 	_ = procdefMixinFields0
 	procdefMixinFields1 := procdefMixin[1].Fields()
@@ -104,7 +131,11 @@ func init() {
 	procdef.DefaultID = procdefDescID.Default.(func() int)
 	procinstMixin := schema.ProcInst{}.Mixin()
 	procinstMixinHooks1 := procinstMixin[1].Hooks()
+	procinstMixinHooks2 := procinstMixin[2].Hooks()
 	procinst.Hooks[0] = procinstMixinHooks1[0]
+	procinst.Hooks[1] = procinstMixinHooks2[0]
+	procinstMixinInters2 := procinstMixin[2].Interceptors()
+	procinst.Interceptors[0] = procinstMixinInters2[0]
 	procinstMixinFields0 := procinstMixin[0].Fields()
 	_ = procinstMixinFields0
 	procinstMixinFields1 := procinstMixin[1].Fields()
@@ -116,7 +147,7 @@ func init() {
 	// procinst.DefaultCreatedAt holds the default value on creation for the created_at field.
 	procinst.DefaultCreatedAt = procinstDescCreatedAt.Default.(func() time.Time)
 	// procinstDescStartTime is the schema descriptor for start_time field.
-	procinstDescStartTime := procinstFields[4].Descriptor()
+	procinstDescStartTime := procinstFields[3].Descriptor()
 	// procinst.DefaultStartTime holds the default value on creation for the start_time field.
 	procinst.DefaultStartTime = procinstDescStartTime.Default.(func() time.Time)
 	// procinstDescID is the schema descriptor for id field.
@@ -124,6 +155,10 @@ func init() {
 	// procinst.DefaultID holds the default value on creation for the id field.
 	procinst.DefaultID = procinstDescID.Default.(func() int)
 	taskMixin := schema.Task{}.Mixin()
+	taskMixinHooks1 := taskMixin[1].Hooks()
+	task.Hooks[0] = taskMixinHooks1[0]
+	taskMixinInters1 := taskMixin[1].Interceptors()
+	task.Interceptors[0] = taskMixinInters1[0]
 	taskMixinFields0 := taskMixin[0].Fields()
 	_ = taskMixinFields0
 	taskFields := schema.Task{}.Fields()
@@ -141,11 +176,11 @@ func init() {
 	// task.DefaultSequential holds the default value on creation for the sequential field.
 	task.DefaultSequential = taskDescSequential.Default.(bool)
 	// taskDescCreatedAt is the schema descriptor for created_at field.
-	taskDescCreatedAt := taskFields[14].Descriptor()
+	taskDescCreatedAt := taskFields[13].Descriptor()
 	// task.DefaultCreatedAt holds the default value on creation for the created_at field.
 	task.DefaultCreatedAt = taskDescCreatedAt.Default.(func() time.Time)
 	// taskDescUpdatedAt is the schema descriptor for updated_at field.
-	taskDescUpdatedAt := taskFields[15].Descriptor()
+	taskDescUpdatedAt := taskFields[14].Descriptor()
 	// task.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	task.DefaultUpdatedAt = taskDescUpdatedAt.Default.(func() time.Time)
 	// task.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -157,6 +192,6 @@ func init() {
 }
 
 const (
-	Version = "v0.11.9"                                         // Version of ent codegen.
-	Sum     = "h1:dbbCkAiPVTRBIJwoZctiSYjB7zxQIBOzVSU5H9VYIQI=" // Sum of ent codegen.
+	Version = "v0.12.4-0.20230702151415-1ec75238037c"           // Version of ent codegen.
+	Sum     = "h1:63w0ILLHBEPwyeMO4en09BA8GLUwCwNfI+3C3MamOhY=" // Sum of ent codegen.
 )

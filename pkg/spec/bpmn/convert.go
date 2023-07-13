@@ -8,6 +8,7 @@ var Convert Converter
 type Converter interface {
 	// ConvertDecisionTable convert decision table to other grammar
 	ConvertDecisionTable(decisionID string, table *dmn.DecisionTable) ([]string, error)
+	// Match bool evaluate
 	Match(rule string, input Mappings) (bool, error)
 	Eval(rule string, input Mappings) (any, error)
 }

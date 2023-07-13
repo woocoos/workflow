@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent/decisiondef"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
@@ -25,10 +26,10 @@ type DecisionDef struct {
 	UpdatedBy int `json:"updated_by,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 部署ID
 	DeploymentID int `json:"deployment_id,omitempty"`
-	// 所属根组织ID
-	OrgID int `json:"org_id,omitempty"`
 	// 所属应用ID
 	AppID int `json:"app_id,omitempty"`
 	// 决策定义ID
@@ -47,13 +48,10 @@ type DecisionDef struct {
 	Revision int32 `json:"revision,omitempty"`
 	// 版本标签
 	VersionTag string `json:"version_tag,omitempty"`
-	// 资源名称
-	ResourceName string `json:"resource_name,omitempty"`
-	// 流程图资源名称
-	DgrmResourceName string `json:"dgrm_resource_name,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionDefQuery when eager-loading is set.
-	Edges DecisionDefEdges `json:"edges"`
+	Edges        DecisionDefEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // DecisionDefEdges holds the relations/edges for other nodes in the graph.
@@ -85,14 +83,14 @@ func (*DecisionDef) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case decisiondef.FieldID, decisiondef.FieldCreatedBy, decisiondef.FieldUpdatedBy, decisiondef.FieldDeploymentID, decisiondef.FieldOrgID, decisiondef.FieldAppID, decisiondef.FieldReqDefID, decisiondef.FieldVersion, decisiondef.FieldRevision:
+		case decisiondef.FieldID, decisiondef.FieldCreatedBy, decisiondef.FieldUpdatedBy, decisiondef.FieldTenantID, decisiondef.FieldDeploymentID, decisiondef.FieldAppID, decisiondef.FieldReqDefID, decisiondef.FieldVersion, decisiondef.FieldRevision:
 			values[i] = new(sql.NullInt64)
-		case decisiondef.FieldCategory, decisiondef.FieldName, decisiondef.FieldKey, decisiondef.FieldReqDefKey, decisiondef.FieldVersionTag, decisiondef.FieldResourceName, decisiondef.FieldDgrmResourceName:
+		case decisiondef.FieldCategory, decisiondef.FieldName, decisiondef.FieldKey, decisiondef.FieldReqDefKey, decisiondef.FieldVersionTag:
 			values[i] = new(sql.NullString)
 		case decisiondef.FieldCreatedAt, decisiondef.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type DecisionDef", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -136,17 +134,17 @@ func (dd *DecisionDef) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				dd.UpdatedAt = value.Time
 			}
+		case decisiondef.FieldTenantID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value.Valid {
+				dd.TenantID = int(value.Int64)
+			}
 		case decisiondef.FieldDeploymentID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deployment_id", values[i])
 			} else if value.Valid {
 				dd.DeploymentID = int(value.Int64)
-			}
-		case decisiondef.FieldOrgID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
-			} else if value.Valid {
-				dd.OrgID = int(value.Int64)
 			}
 		case decisiondef.FieldAppID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -202,21 +200,17 @@ func (dd *DecisionDef) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				dd.VersionTag = value.String
 			}
-		case decisiondef.FieldResourceName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field resource_name", values[i])
-			} else if value.Valid {
-				dd.ResourceName = value.String
-			}
-		case decisiondef.FieldDgrmResourceName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field dgrm_resource_name", values[i])
-			} else if value.Valid {
-				dd.DgrmResourceName = value.String
-			}
+		default:
+			dd.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the DecisionDef.
+// This includes values selected through modifiers, order, etc.
+func (dd *DecisionDef) Value(name string) (ent.Value, error) {
+	return dd.selectValues.Get(name)
 }
 
 // QueryReqDef queries the "req_def" edge of the DecisionDef entity.
@@ -259,11 +253,11 @@ func (dd *DecisionDef) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(dd.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", dd.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("deployment_id=")
 	builder.WriteString(fmt.Sprintf("%v", dd.DeploymentID))
-	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", dd.OrgID))
 	builder.WriteString(", ")
 	builder.WriteString("app_id=")
 	builder.WriteString(fmt.Sprintf("%v", dd.AppID))
@@ -291,12 +285,6 @@ func (dd *DecisionDef) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("version_tag=")
 	builder.WriteString(dd.VersionTag)
-	builder.WriteString(", ")
-	builder.WriteString("resource_name=")
-	builder.WriteString(dd.ResourceName)
-	builder.WriteString(", ")
-	builder.WriteString("dgrm_resource_name=")
-	builder.WriteString(dd.DgrmResourceName)
 	builder.WriteByte(')')
 	return builder.String()
 }

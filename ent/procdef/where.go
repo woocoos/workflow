@@ -7,7 +7,10 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/woocoos/entco/schemax/typex"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ID filters vertices based on their ID field.
@@ -75,14 +78,14 @@ func UpdatedAt(v time.Time) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldTenantID, v))
+}
+
 // DeploymentID applies equality check predicate on the "deployment_id" field. It's identical to DeploymentIDEQ.
 func DeploymentID(v int) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldEQ(FieldDeploymentID, v))
-}
-
-// OrgID applies equality check predicate on the "org_id" field. It's identical to OrgIDEQ.
-func OrgID(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldOrgID, v))
 }
 
 // AppID applies equality check predicate on the "app_id" field. It's identical to AppIDEQ.
@@ -120,19 +123,14 @@ func VersionTag(v string) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldEQ(FieldVersionTag, v))
 }
 
-// ResourceName applies equality check predicate on the "resource_name" field. It's identical to ResourceNameEQ.
-func ResourceName(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldResourceName, v))
+// ResourceKey applies equality check predicate on the "resource_key" field. It's identical to ResourceKeyEQ.
+func ResourceKey(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldResourceKey, v))
 }
 
-// DgrmResourceName applies equality check predicate on the "dgrm_resource_name" field. It's identical to DgrmResourceNameEQ.
-func DgrmResourceName(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldDgrmResourceName, v))
-}
-
-// ResourceData applies equality check predicate on the "resource_data" field. It's identical to ResourceDataEQ.
-func ResourceData(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldResourceData, v))
+// ResourceID applies equality check predicate on the "resource_id" field. It's identical to ResourceIDEQ.
+func ResourceID(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldResourceID, v))
 }
 
 // CreatedByEQ applies the EQ predicate on the "created_by" field.
@@ -315,6 +313,46 @@ func UpdatedAtNotNil() predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldNotNull(FieldUpdatedAt))
 }
 
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNotIn(FieldTenantID, vs...))
+}
+
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGT(FieldTenantID, v))
+}
+
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGTE(FieldTenantID, v))
+}
+
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLT(FieldTenantID, v))
+}
+
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLTE(FieldTenantID, v))
+}
+
 // DeploymentIDEQ applies the EQ predicate on the "deployment_id" field.
 func DeploymentIDEQ(v int) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldEQ(FieldDeploymentID, v))
@@ -333,46 +371,6 @@ func DeploymentIDIn(vs ...int) predicate.ProcDef {
 // DeploymentIDNotIn applies the NotIn predicate on the "deployment_id" field.
 func DeploymentIDNotIn(vs ...int) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldNotIn(FieldDeploymentID, vs...))
-}
-
-// OrgIDEQ applies the EQ predicate on the "org_id" field.
-func OrgIDEQ(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldOrgID, v))
-}
-
-// OrgIDNEQ applies the NEQ predicate on the "org_id" field.
-func OrgIDNEQ(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNEQ(FieldOrgID, v))
-}
-
-// OrgIDIn applies the In predicate on the "org_id" field.
-func OrgIDIn(vs ...int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIn(FieldOrgID, vs...))
-}
-
-// OrgIDNotIn applies the NotIn predicate on the "org_id" field.
-func OrgIDNotIn(vs ...int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotIn(FieldOrgID, vs...))
-}
-
-// OrgIDGT applies the GT predicate on the "org_id" field.
-func OrgIDGT(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGT(FieldOrgID, v))
-}
-
-// OrgIDGTE applies the GTE predicate on the "org_id" field.
-func OrgIDGTE(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGTE(FieldOrgID, v))
-}
-
-// OrgIDLT applies the LT predicate on the "org_id" field.
-func OrgIDLT(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLT(FieldOrgID, v))
-}
-
-// OrgIDLTE applies the LTE predicate on the "org_id" field.
-func OrgIDLTE(v int) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLTE(FieldOrgID, v))
 }
 
 // AppIDEQ applies the EQ predicate on the "app_id" field.
@@ -805,224 +803,159 @@ func VersionTagContainsFold(v string) predicate.ProcDef {
 	return predicate.ProcDef(sql.FieldContainsFold(FieldVersionTag, v))
 }
 
-// ResourceNameEQ applies the EQ predicate on the "resource_name" field.
-func ResourceNameEQ(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldResourceName, v))
+// ResourceKeyEQ applies the EQ predicate on the "resource_key" field.
+func ResourceKeyEQ(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldResourceKey, v))
 }
 
-// ResourceNameNEQ applies the NEQ predicate on the "resource_name" field.
-func ResourceNameNEQ(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNEQ(FieldResourceName, v))
+// ResourceKeyNEQ applies the NEQ predicate on the "resource_key" field.
+func ResourceKeyNEQ(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNEQ(FieldResourceKey, v))
 }
 
-// ResourceNameIn applies the In predicate on the "resource_name" field.
-func ResourceNameIn(vs ...string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIn(FieldResourceName, vs...))
+// ResourceKeyIn applies the In predicate on the "resource_key" field.
+func ResourceKeyIn(vs ...string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldIn(FieldResourceKey, vs...))
 }
 
-// ResourceNameNotIn applies the NotIn predicate on the "resource_name" field.
-func ResourceNameNotIn(vs ...string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotIn(FieldResourceName, vs...))
+// ResourceKeyNotIn applies the NotIn predicate on the "resource_key" field.
+func ResourceKeyNotIn(vs ...string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNotIn(FieldResourceKey, vs...))
 }
 
-// ResourceNameGT applies the GT predicate on the "resource_name" field.
-func ResourceNameGT(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGT(FieldResourceName, v))
+// ResourceKeyGT applies the GT predicate on the "resource_key" field.
+func ResourceKeyGT(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGT(FieldResourceKey, v))
 }
 
-// ResourceNameGTE applies the GTE predicate on the "resource_name" field.
-func ResourceNameGTE(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGTE(FieldResourceName, v))
+// ResourceKeyGTE applies the GTE predicate on the "resource_key" field.
+func ResourceKeyGTE(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGTE(FieldResourceKey, v))
 }
 
-// ResourceNameLT applies the LT predicate on the "resource_name" field.
-func ResourceNameLT(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLT(FieldResourceName, v))
+// ResourceKeyLT applies the LT predicate on the "resource_key" field.
+func ResourceKeyLT(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLT(FieldResourceKey, v))
 }
 
-// ResourceNameLTE applies the LTE predicate on the "resource_name" field.
-func ResourceNameLTE(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLTE(FieldResourceName, v))
+// ResourceKeyLTE applies the LTE predicate on the "resource_key" field.
+func ResourceKeyLTE(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLTE(FieldResourceKey, v))
 }
 
-// ResourceNameContains applies the Contains predicate on the "resource_name" field.
-func ResourceNameContains(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldContains(FieldResourceName, v))
+// ResourceKeyContains applies the Contains predicate on the "resource_key" field.
+func ResourceKeyContains(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldContains(FieldResourceKey, v))
 }
 
-// ResourceNameHasPrefix applies the HasPrefix predicate on the "resource_name" field.
-func ResourceNameHasPrefix(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldHasPrefix(FieldResourceName, v))
+// ResourceKeyHasPrefix applies the HasPrefix predicate on the "resource_key" field.
+func ResourceKeyHasPrefix(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldHasPrefix(FieldResourceKey, v))
 }
 
-// ResourceNameHasSuffix applies the HasSuffix predicate on the "resource_name" field.
-func ResourceNameHasSuffix(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldHasSuffix(FieldResourceName, v))
+// ResourceKeyHasSuffix applies the HasSuffix predicate on the "resource_key" field.
+func ResourceKeyHasSuffix(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldHasSuffix(FieldResourceKey, v))
 }
 
-// ResourceNameIsNil applies the IsNil predicate on the "resource_name" field.
-func ResourceNameIsNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIsNull(FieldResourceName))
+// ResourceKeyIsNil applies the IsNil predicate on the "resource_key" field.
+func ResourceKeyIsNil() predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldIsNull(FieldResourceKey))
 }
 
-// ResourceNameNotNil applies the NotNil predicate on the "resource_name" field.
-func ResourceNameNotNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotNull(FieldResourceName))
+// ResourceKeyNotNil applies the NotNil predicate on the "resource_key" field.
+func ResourceKeyNotNil() predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNotNull(FieldResourceKey))
 }
 
-// ResourceNameEqualFold applies the EqualFold predicate on the "resource_name" field.
-func ResourceNameEqualFold(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEqualFold(FieldResourceName, v))
+// ResourceKeyEqualFold applies the EqualFold predicate on the "resource_key" field.
+func ResourceKeyEqualFold(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEqualFold(FieldResourceKey, v))
 }
 
-// ResourceNameContainsFold applies the ContainsFold predicate on the "resource_name" field.
-func ResourceNameContainsFold(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldContainsFold(FieldResourceName, v))
+// ResourceKeyContainsFold applies the ContainsFold predicate on the "resource_key" field.
+func ResourceKeyContainsFold(v string) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldContainsFold(FieldResourceKey, v))
 }
 
-// DgrmResourceNameEQ applies the EQ predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameEQ(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldDgrmResourceName, v))
+// ResourceIDEQ applies the EQ predicate on the "resource_id" field.
+func ResourceIDEQ(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldEQ(FieldResourceID, v))
 }
 
-// DgrmResourceNameNEQ applies the NEQ predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNEQ(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNEQ(FieldDgrmResourceName, v))
+// ResourceIDNEQ applies the NEQ predicate on the "resource_id" field.
+func ResourceIDNEQ(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNEQ(FieldResourceID, v))
 }
 
-// DgrmResourceNameIn applies the In predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameIn(vs ...string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIn(FieldDgrmResourceName, vs...))
+// ResourceIDIn applies the In predicate on the "resource_id" field.
+func ResourceIDIn(vs ...int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldIn(FieldResourceID, vs...))
 }
 
-// DgrmResourceNameNotIn applies the NotIn predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNotIn(vs ...string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotIn(FieldDgrmResourceName, vs...))
+// ResourceIDNotIn applies the NotIn predicate on the "resource_id" field.
+func ResourceIDNotIn(vs ...int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNotIn(FieldResourceID, vs...))
 }
 
-// DgrmResourceNameGT applies the GT predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameGT(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGT(FieldDgrmResourceName, v))
+// ResourceIDGT applies the GT predicate on the "resource_id" field.
+func ResourceIDGT(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGT(FieldResourceID, v))
 }
 
-// DgrmResourceNameGTE applies the GTE predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameGTE(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGTE(FieldDgrmResourceName, v))
+// ResourceIDGTE applies the GTE predicate on the "resource_id" field.
+func ResourceIDGTE(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldGTE(FieldResourceID, v))
 }
 
-// DgrmResourceNameLT applies the LT predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameLT(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLT(FieldDgrmResourceName, v))
+// ResourceIDLT applies the LT predicate on the "resource_id" field.
+func ResourceIDLT(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLT(FieldResourceID, v))
 }
 
-// DgrmResourceNameLTE applies the LTE predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameLTE(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLTE(FieldDgrmResourceName, v))
+// ResourceIDLTE applies the LTE predicate on the "resource_id" field.
+func ResourceIDLTE(v int) predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldLTE(FieldResourceID, v))
 }
 
-// DgrmResourceNameContains applies the Contains predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameContains(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldContains(FieldDgrmResourceName, v))
+// ResourceIDIsNil applies the IsNil predicate on the "resource_id" field.
+func ResourceIDIsNil() predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldIsNull(FieldResourceID))
 }
 
-// DgrmResourceNameHasPrefix applies the HasPrefix predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameHasPrefix(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldHasPrefix(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameHasSuffix applies the HasSuffix predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameHasSuffix(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldHasSuffix(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameIsNil applies the IsNil predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameIsNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIsNull(FieldDgrmResourceName))
-}
-
-// DgrmResourceNameNotNil applies the NotNil predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNotNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotNull(FieldDgrmResourceName))
-}
-
-// DgrmResourceNameEqualFold applies the EqualFold predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameEqualFold(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEqualFold(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameContainsFold applies the ContainsFold predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameContainsFold(v string) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldContainsFold(FieldDgrmResourceName, v))
+// ResourceIDNotNil applies the NotNil predicate on the "resource_id" field.
+func ResourceIDNotNil() predicate.ProcDef {
+	return predicate.ProcDef(sql.FieldNotNull(FieldResourceID))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
-func StatusEQ(v Status) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldStatus, v))
+func StatusEQ(v typex.SimpleStatus) predicate.ProcDef {
+	vc := v
+	return predicate.ProcDef(sql.FieldEQ(FieldStatus, vc))
 }
 
 // StatusNEQ applies the NEQ predicate on the "status" field.
-func StatusNEQ(v Status) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNEQ(FieldStatus, v))
+func StatusNEQ(v typex.SimpleStatus) predicate.ProcDef {
+	vc := v
+	return predicate.ProcDef(sql.FieldNEQ(FieldStatus, vc))
 }
 
 // StatusIn applies the In predicate on the "status" field.
-func StatusIn(vs ...Status) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIn(FieldStatus, vs...))
+func StatusIn(vs ...typex.SimpleStatus) predicate.ProcDef {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.ProcDef(sql.FieldIn(FieldStatus, v...))
 }
 
 // StatusNotIn applies the NotIn predicate on the "status" field.
-func StatusNotIn(vs ...Status) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotIn(FieldStatus, vs...))
-}
-
-// ResourceDataEQ applies the EQ predicate on the "resource_data" field.
-func ResourceDataEQ(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldEQ(FieldResourceData, v))
-}
-
-// ResourceDataNEQ applies the NEQ predicate on the "resource_data" field.
-func ResourceDataNEQ(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNEQ(FieldResourceData, v))
-}
-
-// ResourceDataIn applies the In predicate on the "resource_data" field.
-func ResourceDataIn(vs ...[]byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIn(FieldResourceData, vs...))
-}
-
-// ResourceDataNotIn applies the NotIn predicate on the "resource_data" field.
-func ResourceDataNotIn(vs ...[]byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotIn(FieldResourceData, vs...))
-}
-
-// ResourceDataGT applies the GT predicate on the "resource_data" field.
-func ResourceDataGT(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGT(FieldResourceData, v))
-}
-
-// ResourceDataGTE applies the GTE predicate on the "resource_data" field.
-func ResourceDataGTE(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldGTE(FieldResourceData, v))
-}
-
-// ResourceDataLT applies the LT predicate on the "resource_data" field.
-func ResourceDataLT(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLT(FieldResourceData, v))
-}
-
-// ResourceDataLTE applies the LTE predicate on the "resource_data" field.
-func ResourceDataLTE(v []byte) predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldLTE(FieldResourceData, v))
-}
-
-// ResourceDataIsNil applies the IsNil predicate on the "resource_data" field.
-func ResourceDataIsNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldIsNull(FieldResourceData))
-}
-
-// ResourceDataNotNil applies the NotNil predicate on the "resource_data" field.
-func ResourceDataNotNil() predicate.ProcDef {
-	return predicate.ProcDef(sql.FieldNotNull(FieldResourceData))
+func StatusNotIn(vs ...typex.SimpleStatus) predicate.ProcDef {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.ProcDef(sql.FieldNotIn(FieldStatus, v...))
 }
 
 // HasDeployment applies the HasEdge predicate on the "deployment" edge.
@@ -1032,6 +965,9 @@ func HasDeployment() predicate.ProcDef {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, DeploymentTable, DeploymentColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Deployment
+		step.Edge.Schema = schemaConfig.ProcDef
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -1039,11 +975,10 @@ func HasDeployment() predicate.ProcDef {
 // HasDeploymentWith applies the HasEdge predicate on the "deployment" edge with a given conditions (other predicates).
 func HasDeploymentWith(preds ...predicate.Deployment) predicate.ProcDef {
 	return predicate.ProcDef(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(DeploymentInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, DeploymentTable, DeploymentColumn),
-		)
+		step := newDeploymentStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Deployment
+		step.Edge.Schema = schemaConfig.ProcDef
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -1059,6 +994,9 @@ func HasProcInstances() predicate.ProcDef {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, ProcInstancesTable, ProcInstancesColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcInst
+		step.Edge.Schema = schemaConfig.ProcInst
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -1066,11 +1004,10 @@ func HasProcInstances() predicate.ProcDef {
 // HasProcInstancesWith applies the HasEdge predicate on the "proc_instances" edge with a given conditions (other predicates).
 func HasProcInstancesWith(preds ...predicate.ProcInst) predicate.ProcDef {
 	return predicate.ProcDef(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(ProcInstancesInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, ProcInstancesTable, ProcInstancesColumn),
-		)
+		step := newProcInstancesStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcInst
+		step.Edge.Schema = schemaConfig.ProcInst
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -1081,32 +1018,15 @@ func HasProcInstancesWith(preds ...predicate.ProcInst) predicate.ProcDef {
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.ProcDef) predicate.ProcDef {
-	return predicate.ProcDef(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.ProcDef(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.ProcDef) predicate.ProcDef {
-	return predicate.ProcDef(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.ProcDef(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.ProcDef) predicate.ProcDef {
-	return predicate.ProcDef(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.ProcDef(sql.NotPredicates(p))
 }

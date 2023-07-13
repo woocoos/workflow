@@ -16,6 +16,8 @@ import (
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orgrole"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
@@ -42,6 +44,18 @@ func (d *Deployment) GlobalID(context.Context) (string, error) {
 // GlobalID returns the global identifier for the given IdentityLink node.
 func (il *IdentityLink) GlobalID(context.Context) (string, error) {
 	id := fmt.Sprintf("%s:%d", identitylink.Table, il.ID)
+	return base64.StdEncoding.EncodeToString([]byte(id)), nil
+}
+
+// GlobalID returns the global identifier for the given OrgRole node.
+func (or *OrgRole) GlobalID(context.Context) (string, error) {
+	id := fmt.Sprintf("%s:%d", orgrole.Table, or.ID)
+	return base64.StdEncoding.EncodeToString([]byte(id)), nil
+}
+
+// GlobalID returns the global identifier for the given OrgUser node.
+func (ou *OrgUser) GlobalID(context.Context) (string, error) {
+	id := fmt.Sprintf("%s:%d", orguser.Table, ou.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
@@ -87,6 +101,10 @@ func GlobalID(tp, id string) (string, error) {
 	case deployment.Table:
 		break
 	case identitylink.Table:
+		break
+	case orgrole.Table:
+		break
+	case orguser.Table:
 		break
 	case procdef.Table:
 		break

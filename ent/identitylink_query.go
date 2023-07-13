@@ -13,13 +13,15 @@ import (
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // IdentityLinkQuery is the builder for querying IdentityLink entities.
 type IdentityLinkQuery struct {
 	config
 	ctx        *QueryContext
-	order      []OrderFunc
+	order      []identitylink.OrderOption
 	inters     []Interceptor
 	predicates []predicate.IdentityLink
 	withTask   *TaskQuery
@@ -56,7 +58,7 @@ func (ilq *IdentityLinkQuery) Unique(unique bool) *IdentityLinkQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (ilq *IdentityLinkQuery) Order(o ...OrderFunc) *IdentityLinkQuery {
+func (ilq *IdentityLinkQuery) Order(o ...identitylink.OrderOption) *IdentityLinkQuery {
 	ilq.order = append(ilq.order, o...)
 	return ilq
 }
@@ -77,6 +79,9 @@ func (ilq *IdentityLinkQuery) QueryTask() *TaskQuery {
 			sqlgraph.To(task.Table, task.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, identitylink.TaskTable, identitylink.TaskColumn),
 		)
+		schemaConfig := ilq.schemaConfig
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.IdentityLink
 		fromU = sqlgraph.SetNeighbors(ilq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -272,7 +277,7 @@ func (ilq *IdentityLinkQuery) Clone() *IdentityLinkQuery {
 	return &IdentityLinkQuery{
 		config:     ilq.config,
 		ctx:        ilq.ctx.Clone(),
-		order:      append([]OrderFunc{}, ilq.order...),
+		order:      append([]identitylink.OrderOption{}, ilq.order...),
 		inters:     append([]Interceptor{}, ilq.inters...),
 		predicates: append([]predicate.IdentityLink{}, ilq.predicates...),
 		withTask:   ilq.withTask.Clone(),
@@ -299,12 +304,12 @@ func (ilq *IdentityLinkQuery) WithTask(opts ...func(*TaskQuery)) *IdentityLinkQu
 // Example:
 //
 //	var v []struct {
-//		TaskID int `json:"task_id,omitempty"`
+//		TenantID int `json:"tenant_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.IdentityLink.Query().
-//		GroupBy(identitylink.FieldTaskID).
+//		GroupBy(identitylink.FieldTenantID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (ilq *IdentityLinkQuery) GroupBy(field string, fields ...string) *IdentityLinkGroupBy {
@@ -322,11 +327,11 @@ func (ilq *IdentityLinkQuery) GroupBy(field string, fields ...string) *IdentityL
 // Example:
 //
 //	var v []struct {
-//		TaskID int `json:"task_id,omitempty"`
+//		TenantID int `json:"tenant_id,omitempty"`
 //	}
 //
 //	client.IdentityLink.Query().
-//		Select(identitylink.FieldTaskID).
+//		Select(identitylink.FieldTenantID).
 //		Scan(ctx, &v)
 func (ilq *IdentityLinkQuery) Select(fields ...string) *IdentityLinkSelect {
 	ilq.ctx.Fields = append(ilq.ctx.Fields, fields...)
@@ -384,6 +389,8 @@ func (ilq *IdentityLinkQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = ilq.schemaConfig.IdentityLink
+	ctx = internal.NewSchemaConfigContext(ctx, ilq.schemaConfig)
 	if len(ilq.modifiers) > 0 {
 		_spec.Modifiers = ilq.modifiers
 	}
@@ -442,6 +449,8 @@ func (ilq *IdentityLinkQuery) loadTask(ctx context.Context, query *TaskQuery, no
 
 func (ilq *IdentityLinkQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := ilq.querySpec()
+	_spec.Node.Schema = ilq.schemaConfig.IdentityLink
+	ctx = internal.NewSchemaConfigContext(ctx, ilq.schemaConfig)
 	if len(ilq.modifiers) > 0 {
 		_spec.Modifiers = ilq.modifiers
 	}
@@ -467,6 +476,9 @@ func (ilq *IdentityLinkQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != identitylink.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if ilq.withTask != nil {
+			_spec.Node.AddColumnOnce(identitylink.FieldTaskID)
 		}
 	}
 	if ps := ilq.predicates; len(ps) > 0 {
@@ -507,6 +519,9 @@ func (ilq *IdentityLinkQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if ilq.ctx.Unique != nil && *ilq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(ilq.schemaConfig.IdentityLink)
+	ctx = internal.NewSchemaConfigContext(ctx, ilq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range ilq.predicates {
 		p(selector)
 	}

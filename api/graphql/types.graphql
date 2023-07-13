@@ -1,28 +1,19 @@
-scalar Upload
-
-input UploadFile {
-    id: Int!
-    file: Upload!
-}
-
 input DeployDiagramInput {
     """部署名称"""
     name: String!
-    """租户ID,根组织ID"""
-    orgID: ID!
     """所属应用"""
     appID: ID!
     """流程文件"""
-    files: [UploadFile!]!
+    resourceKey: [String!]
+    """流程图文件ID"""
+    resourceID: [ID!]
 }
 
 input StartProcessInput {
     """流程定义ID"""
     procDefKey: String!
-    """租户ID,根组织ID"""
-    orgID: ID!
-    """符合woocoos定义的资源编码"""
-    ResID: String!
+    """业务ID"""
+    businessKey: String!
     """流程变量"""
     variables: [VariableInput!]
 }

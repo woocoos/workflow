@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent/deployment"
 )
@@ -24,8 +25,8 @@ type Deployment struct {
 	UpdatedBy int `json:"updated_by,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// 所属根组织ID
-	OrgID int `json:"org_id,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 所属应用ID
 	AppID int `json:"app_id,omitempty"`
 	// 名称
@@ -36,7 +37,8 @@ type Deployment struct {
 	DeployTime time.Time `json:"deploy_time,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DeploymentQuery when eager-loading is set.
-	Edges DeploymentEdges `json:"edges"`
+	Edges        DeploymentEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // DeploymentEdges holds the relations/edges for other nodes in the graph.
@@ -78,14 +80,14 @@ func (*Deployment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case deployment.FieldID, deployment.FieldCreatedBy, deployment.FieldUpdatedBy, deployment.FieldOrgID, deployment.FieldAppID:
+		case deployment.FieldID, deployment.FieldCreatedBy, deployment.FieldUpdatedBy, deployment.FieldTenantID, deployment.FieldAppID:
 			values[i] = new(sql.NullInt64)
 		case deployment.FieldName, deployment.FieldSource:
 			values[i] = new(sql.NullString)
 		case deployment.FieldCreatedAt, deployment.FieldUpdatedAt, deployment.FieldDeployTime:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Deployment", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -129,11 +131,11 @@ func (d *Deployment) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.UpdatedAt = value.Time
 			}
-		case deployment.FieldOrgID:
+		case deployment.FieldTenantID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
 			} else if value.Valid {
-				d.OrgID = int(value.Int64)
+				d.TenantID = int(value.Int64)
 			}
 		case deployment.FieldAppID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -159,9 +161,17 @@ func (d *Deployment) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.DeployTime = value.Time
 			}
+		default:
+			d.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Deployment.
+// This includes values selected through modifiers, order, etc.
+func (d *Deployment) Value(name string) (ent.Value, error) {
+	return d.selectValues.Get(name)
 }
 
 // QueryProcDefs queries the "proc_defs" edge of the Deployment entity.
@@ -209,8 +219,8 @@ func (d *Deployment) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(d.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", d.OrgID))
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", d.TenantID))
 	builder.WriteString(", ")
 	builder.WriteString("app_id=")
 	builder.WriteString(fmt.Sprintf("%v", d.AppID))

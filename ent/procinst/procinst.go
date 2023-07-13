@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -24,10 +26,10 @@ const (
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldProcDefID holds the string denoting the proc_def_id field in the database.
 	FieldProcDefID = "proc_def_id"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
 	// FieldAppID holds the string denoting the app_id field in the database.
 	FieldAppID = "app_id"
 	// FieldBusinessKey holds the string denoting the business_key field in the database.
@@ -79,8 +81,8 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
+	FieldTenantID,
 	FieldProcDefID,
-	FieldOrgID,
 	FieldAppID,
 	FieldBusinessKey,
 	FieldStartTime,
@@ -110,7 +112,8 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
-	Hooks [1]ent.Hook
+	Hooks        [2]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultStartTime holds the default value on creation for the "start_time" field.
@@ -145,6 +148,134 @@ func StatusValidator(s Status) error {
 	default:
 		return fmt.Errorf("procinst: invalid enum value for status field: %q", s)
 	}
+}
+
+// OrderOption defines the ordering options for the ProcInst queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedBy orders the results by the updated_by field.
+func ByUpdatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedBy, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByProcDefID orders the results by the proc_def_id field.
+func ByProcDefID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProcDefID, opts...).ToFunc()
+}
+
+// ByAppID orders the results by the app_id field.
+func ByAppID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAppID, opts...).ToFunc()
+}
+
+// ByBusinessKey orders the results by the business_key field.
+func ByBusinessKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBusinessKey, opts...).ToFunc()
+}
+
+// ByStartTime orders the results by the start_time field.
+func ByStartTime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStartTime, opts...).ToFunc()
+}
+
+// ByEndTime orders the results by the end_time field.
+func ByEndTime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEndTime, opts...).ToFunc()
+}
+
+// ByDuration orders the results by the duration field.
+func ByDuration(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDuration, opts...).ToFunc()
+}
+
+// ByStartUserID orders the results by the start_user_id field.
+func ByStartUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStartUserID, opts...).ToFunc()
+}
+
+// BySupperInstanceID orders the results by the supper_instance_id field.
+func BySupperInstanceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSupperInstanceID, opts...).ToFunc()
+}
+
+// ByRootInstanceID orders the results by the root_instance_id field.
+func ByRootInstanceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRootInstanceID, opts...).ToFunc()
+}
+
+// ByDeletedTime orders the results by the deleted_time field.
+func ByDeletedTime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedTime, opts...).ToFunc()
+}
+
+// ByDeletedReason orders the results by the deleted_reason field.
+func ByDeletedReason(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedReason, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByProcDefField orders the results by proc_def field.
+func ByProcDefField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProcDefStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByTasksCount orders the results by tasks count.
+func ByTasksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTasksStep(), opts...)
+	}
+}
+
+// ByTasks orders the results by tasks terms.
+func ByTasks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTasksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProcDefStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProcDefInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ProcDefTable, ProcDefColumn),
+	)
+}
+func newTasksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TasksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TasksTable, TasksColumn),
+	)
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

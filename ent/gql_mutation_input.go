@@ -70,8 +70,7 @@ func (c *DeploymentUpdateOne) SetInput(i UpdateDeploymentInput) *DeploymentUpdat
 
 // CreateDeploymentInput represents a mutation input for creating deployments.
 type CreateDeploymentInput struct {
-	ID             *int
-	OrgID          int
+	TenantID       int
 	AppID          int
 	Name           *string
 	Source         *string
@@ -82,7 +81,7 @@ type CreateDeploymentInput struct {
 
 // Mutate applies the CreateDeploymentInput on the DeploymentMutation builder.
 func (i *CreateDeploymentInput) Mutate(m *DeploymentMutation) {
-	m.SetOrgID(i.OrgID)
+	m.SetTenantID(i.TenantID)
 	m.SetAppID(i.AppID)
 	if v := i.Name; v != nil {
 		m.SetName(*v)
@@ -109,13 +108,12 @@ func (c *DeploymentCreate) SetInput(i CreateDeploymentInput) *DeploymentCreate {
 
 // CreateIdentityLinkInput represents a mutation input for creating identitylinks.
 type CreateIdentityLinkInput struct {
-	ID            *int
+	TenantID      int
 	ProcDefID     int
 	GroupID       *int
 	UserID        *int
 	AssignerID    *int
 	LinkType      identitylink.LinkType
-	OrgID         int
 	OperationType identitylink.OperationType
 	Comments      *string
 	TaskID        int
@@ -123,6 +121,7 @@ type CreateIdentityLinkInput struct {
 
 // Mutate applies the CreateIdentityLinkInput on the IdentityLinkMutation builder.
 func (i *CreateIdentityLinkInput) Mutate(m *IdentityLinkMutation) {
+	m.SetTenantID(i.TenantID)
 	m.SetProcDefID(i.ProcDefID)
 	if v := i.GroupID; v != nil {
 		m.SetGroupID(*v)
@@ -134,7 +133,6 @@ func (i *CreateIdentityLinkInput) Mutate(m *IdentityLinkMutation) {
 		m.SetAssignerID(*v)
 	}
 	m.SetLinkType(i.LinkType)
-	m.SetOrgID(i.OrgID)
 	m.SetOperationType(i.OperationType)
 	if v := i.Comments; v != nil {
 		m.SetComments(*v)
@@ -160,7 +158,6 @@ type UpdateIdentityLinkInput struct {
 	OperationType   *identitylink.OperationType
 	ClearComments   bool
 	Comments        *string
-	ClearTask       bool
 	TaskID          *int
 }
 
@@ -195,9 +192,6 @@ func (i *UpdateIdentityLinkInput) Mutate(m *IdentityLinkMutation) {
 	}
 	if v := i.Comments; v != nil {
 		m.SetComments(*v)
-	}
-	if i.ClearTask {
-		m.ClearTask()
 	}
 	if v := i.TaskID; v != nil {
 		m.SetTaskID(*v)

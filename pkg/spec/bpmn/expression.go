@@ -20,6 +20,11 @@ type FormalExpression struct {
 	EvaluatesToTypeRef string `xml:"evaluatesToTypeRef,attr"`
 }
 
+// IsFormal check expression is formal expression
+func IsFormal(exp string) bool {
+	return strings.HasPrefix(exp, "=")
+}
+
 // ConditionExpression is camunda extension
 type ConditionExpression struct {
 	FormalExpression
@@ -33,6 +38,9 @@ type ConditionExpression struct {
 //
 //	`=`: FEEL equality, golang expression `==`.. note support in quote string like `="a=b"`
 func (c ConditionExpression) Evaluate(input map[string]any) (bool, error) {
+	if Convert == nil {
+		return false, errors.New("evaluate converter not set")
+	}
 	return Convert.Match(c.Content, input)
 }
 

@@ -15,13 +15,15 @@ import (
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // TaskQuery is the builder for querying Task entities.
 type TaskQuery struct {
 	config
 	ctx                     *QueryContext
-	order                   []OrderFunc
+	order                   []task.OrderOption
 	inters                  []Interceptor
 	predicates              []predicate.Task
 	withProcInst            *ProcInstQuery
@@ -60,7 +62,7 @@ func (tq *TaskQuery) Unique(unique bool) *TaskQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (tq *TaskQuery) Order(o ...OrderFunc) *TaskQuery {
+func (tq *TaskQuery) Order(o ...task.OrderOption) *TaskQuery {
 	tq.order = append(tq.order, o...)
 	return tq
 }
@@ -81,6 +83,9 @@ func (tq *TaskQuery) QueryProcInst() *ProcInstQuery {
 			sqlgraph.To(procinst.Table, procinst.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, task.ProcInstTable, task.ProcInstColumn),
 		)
+		schemaConfig := tq.schemaConfig
+		step.To.Schema = schemaConfig.ProcInst
+		step.Edge.Schema = schemaConfig.Task
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -103,6 +108,9 @@ func (tq *TaskQuery) QueryTaskIdentities() *IdentityLinkQuery {
 			sqlgraph.To(identitylink.Table, identitylink.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, task.TaskIdentitiesTable, task.TaskIdentitiesColumn),
 		)
+		schemaConfig := tq.schemaConfig
+		step.To.Schema = schemaConfig.IdentityLink
+		step.Edge.Schema = schemaConfig.IdentityLink
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -298,7 +306,7 @@ func (tq *TaskQuery) Clone() *TaskQuery {
 	return &TaskQuery{
 		config:             tq.config,
 		ctx:                tq.ctx.Clone(),
-		order:              append([]OrderFunc{}, tq.order...),
+		order:              append([]task.OrderOption{}, tq.order...),
 		inters:             append([]Interceptor{}, tq.inters...),
 		predicates:         append([]predicate.Task{}, tq.predicates...),
 		withProcInst:       tq.withProcInst.Clone(),
@@ -337,12 +345,12 @@ func (tq *TaskQuery) WithTaskIdentities(opts ...func(*IdentityLinkQuery)) *TaskQ
 // Example:
 //
 //	var v []struct {
-//		ProcInstID int `json:"proc_inst_id,omitempty"`
+//		TenantID int `json:"tenant_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		GroupBy(task.FieldProcInstID).
+//		GroupBy(task.FieldTenantID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (tq *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
@@ -360,11 +368,11 @@ func (tq *TaskQuery) GroupBy(field string, fields ...string) *TaskGroupBy {
 // Example:
 //
 //	var v []struct {
-//		ProcInstID int `json:"proc_inst_id,omitempty"`
+//		TenantID int `json:"tenant_id,omitempty"`
 //	}
 //
 //	client.Task.Query().
-//		Select(task.FieldProcInstID).
+//		Select(task.FieldTenantID).
 //		Scan(ctx, &v)
 func (tq *TaskQuery) Select(fields ...string) *TaskSelect {
 	tq.ctx.Fields = append(tq.ctx.Fields, fields...)
@@ -423,6 +431,8 @@ func (tq *TaskQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Task, e
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = tq.schemaConfig.Task
+	ctx = internal.NewSchemaConfigContext(ctx, tq.schemaConfig)
 	if len(tq.modifiers) > 0 {
 		_spec.Modifiers = tq.modifiers
 	}
@@ -502,8 +512,11 @@ func (tq *TaskQuery) loadTaskIdentities(ctx context.Context, query *IdentityLink
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(identitylink.FieldTaskID)
+	}
 	query.Where(predicate.IdentityLink(func(s *sql.Selector) {
-		s.Where(sql.InValues(task.TaskIdentitiesColumn, fks...))
+		s.Where(sql.InValues(s.C(task.TaskIdentitiesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -513,7 +526,7 @@ func (tq *TaskQuery) loadTaskIdentities(ctx context.Context, query *IdentityLink
 		fk := n.TaskID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "task_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "task_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -522,6 +535,8 @@ func (tq *TaskQuery) loadTaskIdentities(ctx context.Context, query *IdentityLink
 
 func (tq *TaskQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := tq.querySpec()
+	_spec.Node.Schema = tq.schemaConfig.Task
+	ctx = internal.NewSchemaConfigContext(ctx, tq.schemaConfig)
 	if len(tq.modifiers) > 0 {
 		_spec.Modifiers = tq.modifiers
 	}
@@ -547,6 +562,9 @@ func (tq *TaskQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != task.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if tq.withProcInst != nil {
+			_spec.Node.AddColumnOnce(task.FieldProcInstID)
 		}
 	}
 	if ps := tq.predicates; len(ps) > 0 {
@@ -587,6 +605,9 @@ func (tq *TaskQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if tq.ctx.Unique != nil && *tq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(tq.schemaConfig.Task)
+	ctx = internal.NewSchemaConfigContext(ctx, tq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range tq.predicates {
 		p(selector)
 	}

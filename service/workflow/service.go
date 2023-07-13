@@ -3,33 +3,52 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"github.com/tsingsun/woocoo/pkg/conf"
 	"github.com/tsingsun/woocoo/pkg/security"
-	portalent "github.com/woocoos/knockout/ent"
-	"github.com/woocoos/knockout/ent/app"
-	"github.com/woocoos/knockout/ent/orgapp"
+	"github.com/woocoos/entco/pkg/identity"
+	"github.com/woocoos/workflow/api/graphql/model"
+	"github.com/woocoos/workflow/codegen/entgen/types"
 	"github.com/woocoos/workflow/ent"
+	"github.com/woocoos/workflow/ent/orgapp"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
-	"github.com/woocoos/workflow/graph/entgen/types"
-	"github.com/woocoos/workflow/graph/model"
 	"github.com/woocoos/workflow/pkg/engine"
 	"github.com/woocoos/workflow/pkg/spec"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"go.temporal.io/sdk/client"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
 type Service struct {
-	WFDB         *ent.Client
-	PortalDB     *portalent.Client
+	Db           *ent.Client
 	Client       client.Client
 	TaskQueue    string
 	WorkflowType string
+	// 资源根目录
+	ResourceDir string
 }
 
+func NewService(cnf *conf.AppConfiguration) (*Service, error) {
+	co := client.Options{}
+	err := cnf.Sub("temporal.clientOptions").Unmarshal(&co)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build client option: %v", err)
+	}
+	c, err := client.Dial(co)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create client: %v", err)
+	}
+	service := &Service{
+		Client:      c,
+		ResourceDir: cnf.String("workflow.resourceDir"),
+		TaskQueue:   cnf.String("temporal.taskQueue"),
+	}
+	return service, nil
+}
+
+// BuildEngine 构建流程引擎
 func (s *Service) BuildEngine(name string, path string, data []byte) (eg spec.Loader, err error) {
 	switch filepath.Ext(name) {
 	case ".bpmn", "bpm":
@@ -37,7 +56,7 @@ func (s *Service) BuildEngine(name string, path string, data []byte) (eg spec.Lo
 	case ".dmn":
 		eg = &engine.DMNLoader{}
 	default:
-		return nil, fmt.Errorf("[BuildEngine]not support file type")
+		return nil, fmt.Errorf("BuildEngine:not support file type")
 	}
 
 	if path != "" {
@@ -48,6 +67,7 @@ func (s *Service) BuildEngine(name string, path string, data []byte) (eg spec.Lo
 	}
 
 	if len(data) == 0 {
+		err = fmt.Errorf("BuildEngine:data is empty")
 		return
 	}
 	if err = eg.Load(data); err != nil {
@@ -57,19 +77,20 @@ func (s *Service) BuildEngine(name string, path string, data []byte) (eg spec.Lo
 }
 
 func (s *Service) checkExists(ctx context.Context, input model.StartProcessInput, defID int) (*ent.ProcInst, error) {
+	tid, err := identity.TenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// 检查是否已经存在流程实例, TODO res ID是否存在可能需要应用端检查.
-	pi, _ := s.WFDB.ProcInst.Query().Where(procinst.BusinessKey(input.ResID),
+	pi, _ := s.Db.ProcInst.Query().Where(procinst.BusinessKey(input.BusinessKey),
 		procinst.ProcDefID(defID), procinst.StatusIn(procinst.StatusReady, procinst.StatusActive),
 	).Order(ent.Desc(procinst.FieldID)).First(ctx)
 	if pi != nil {
 		return pi, nil
 	}
 	// 检查应用是否在该组织下.
-	res := strings.Split(input.ResID, ":")
-	appCode := res[0]
-	if _, err := s.PortalDB.OrgApp.Query().WithApp(func(query *portalent.AppQuery) {
-		query.Where(app.Code(appCode))
-	}).Where(orgapp.OrgID(input.OrgID)).Only(ctx); err != nil {
+	if _, err := s.Db.OrgApp.Query().Where(
+		orgapp.OrgID(tid), orgapp.AppID(pi.AppID)).Only(ctx); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -77,7 +98,11 @@ func (s *Service) checkExists(ctx context.Context, input model.StartProcessInput
 
 // CreateAndRunProcessInstance 启动流程实例,如果实例已经在执行过程则返回工作流ID,否则将创新流程.对于调用方需要控制状态.
 func (s *Service) CreateAndRunProcessInstance(ctx context.Context, input model.StartProcessInput) (wfr *types.WorkflowRun, err error) {
-	pd, err := s.WFDB.ProcDef.Query().Where(procdef.Key(input.ProcDefKey), procdef.OrgID(input.OrgID)).
+	tid, err := identity.TenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pd, err := s.Db.ProcDef.Query().Where(procdef.Key(input.ProcDefKey), procdef.TenantID(tid)).
 		Order(ent.Desc(procdef.FieldVersion, procdef.FieldRevision)).First(ctx)
 	if err != nil {
 		return nil, err
@@ -88,19 +113,23 @@ func (s *Service) CreateAndRunProcessInstance(ctx context.Context, input model.S
 	}
 	if pi == nil {
 		up := security.GenericIdentityFromContext(ctx)
-		pi, err = s.WFDB.ProcInst.Create().SetOrgID(pd.OrgID).SetProcDefID(pd.ID).
-			SetAppID(pd.AppID).SetBusinessKey(input.ResID).SetProcDefID(pd.ID).SetStartTime(time.Now()).
-			SetStartUserID(up.NameIntX()).SetStatus(procinst.StatusReady).Save(ctx)
+		uid, err := strconv.Atoi(up.Name())
+		if err != nil {
+			return nil, err
+		}
+		pi, err = s.Db.ProcInst.Create().SetTenantID(pd.TenantID).SetProcDefID(pd.ID).
+			SetAppID(pd.AppID).SetBusinessKey(input.BusinessKey).SetProcDefID(pd.ID).SetStartTime(time.Now()).
+			SetStartUserID(uid).SetStatus(procinst.StatusReady).Save(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	inst := engine.InstanceRequest{
-		ProcDefKey:   pd.Key,
-		ProcInst:     pi,
-		ResourceName: pd.ResourceName,
-		Variables:    make(bpmn.Mappings),
+		ProcDefKey:  pd.Key,
+		ProcInst:    pi,
+		ResourceKey: pd.ResourceKey,
+		Variables:   make(bpmn.Mappings),
 	}
 	for _, variable := range input.Variables {
 		inst.Variables[variable.Name] = variable.Value

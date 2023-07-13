@@ -8,8 +8,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // IdentityLinkDelete is the builder for deleting a IdentityLink entity.
@@ -27,7 +29,7 @@ func (ild *IdentityLinkDelete) Where(ps ...predicate.IdentityLink) *IdentityLink
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (ild *IdentityLinkDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks[int, IdentityLinkMutation](ctx, ild.sqlExec, ild.mutation, ild.hooks)
+	return withHooks(ctx, ild.sqlExec, ild.mutation, ild.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -41,6 +43,8 @@ func (ild *IdentityLinkDelete) ExecX(ctx context.Context) int {
 
 func (ild *IdentityLinkDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(identitylink.Table, sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt))
+	_spec.Node.Schema = ild.schemaConfig.IdentityLink
+	ctx = internal.NewSchemaConfigContext(ctx, ild.schemaConfig)
 	if ps := ild.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

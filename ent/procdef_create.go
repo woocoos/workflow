@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/woocoos/entco/schemax/typex"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
@@ -20,6 +22,7 @@ type ProcDefCreate struct {
 	config
 	mutation *ProcDefMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedBy sets the "created_by" field.
@@ -70,15 +73,15 @@ func (pdc *ProcDefCreate) SetNillableUpdatedAt(t *time.Time) *ProcDefCreate {
 	return pdc
 }
 
-// SetDeploymentID sets the "deployment_id" field.
-func (pdc *ProcDefCreate) SetDeploymentID(i int) *ProcDefCreate {
-	pdc.mutation.SetDeploymentID(i)
+// SetTenantID sets the "tenant_id" field.
+func (pdc *ProcDefCreate) SetTenantID(i int) *ProcDefCreate {
+	pdc.mutation.SetTenantID(i)
 	return pdc
 }
 
-// SetOrgID sets the "org_id" field.
-func (pdc *ProcDefCreate) SetOrgID(i int) *ProcDefCreate {
-	pdc.mutation.SetOrgID(i)
+// SetDeploymentID sets the "deployment_id" field.
+func (pdc *ProcDefCreate) SetDeploymentID(i int) *ProcDefCreate {
+	pdc.mutation.SetDeploymentID(i)
 	return pdc
 }
 
@@ -164,51 +167,45 @@ func (pdc *ProcDefCreate) SetNillableVersionTag(s *string) *ProcDefCreate {
 	return pdc
 }
 
-// SetResourceName sets the "resource_name" field.
-func (pdc *ProcDefCreate) SetResourceName(s string) *ProcDefCreate {
-	pdc.mutation.SetResourceName(s)
+// SetResourceKey sets the "resource_key" field.
+func (pdc *ProcDefCreate) SetResourceKey(s string) *ProcDefCreate {
+	pdc.mutation.SetResourceKey(s)
 	return pdc
 }
 
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (pdc *ProcDefCreate) SetNillableResourceName(s *string) *ProcDefCreate {
+// SetNillableResourceKey sets the "resource_key" field if the given value is not nil.
+func (pdc *ProcDefCreate) SetNillableResourceKey(s *string) *ProcDefCreate {
 	if s != nil {
-		pdc.SetResourceName(*s)
+		pdc.SetResourceKey(*s)
 	}
 	return pdc
 }
 
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (pdc *ProcDefCreate) SetDgrmResourceName(s string) *ProcDefCreate {
-	pdc.mutation.SetDgrmResourceName(s)
+// SetResourceID sets the "resource_id" field.
+func (pdc *ProcDefCreate) SetResourceID(i int) *ProcDefCreate {
+	pdc.mutation.SetResourceID(i)
 	return pdc
 }
 
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (pdc *ProcDefCreate) SetNillableDgrmResourceName(s *string) *ProcDefCreate {
-	if s != nil {
-		pdc.SetDgrmResourceName(*s)
+// SetNillableResourceID sets the "resource_id" field if the given value is not nil.
+func (pdc *ProcDefCreate) SetNillableResourceID(i *int) *ProcDefCreate {
+	if i != nil {
+		pdc.SetResourceID(*i)
 	}
 	return pdc
 }
 
 // SetStatus sets the "status" field.
-func (pdc *ProcDefCreate) SetStatus(pr procdef.Status) *ProcDefCreate {
-	pdc.mutation.SetStatus(pr)
+func (pdc *ProcDefCreate) SetStatus(ts typex.SimpleStatus) *ProcDefCreate {
+	pdc.mutation.SetStatus(ts)
 	return pdc
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (pdc *ProcDefCreate) SetNillableStatus(pr *procdef.Status) *ProcDefCreate {
-	if pr != nil {
-		pdc.SetStatus(*pr)
+func (pdc *ProcDefCreate) SetNillableStatus(ts *typex.SimpleStatus) *ProcDefCreate {
+	if ts != nil {
+		pdc.SetStatus(*ts)
 	}
-	return pdc
-}
-
-// SetResourceData sets the "resource_data" field.
-func (pdc *ProcDefCreate) SetResourceData(b []byte) *ProcDefCreate {
-	pdc.mutation.SetResourceData(b)
 	return pdc
 }
 
@@ -256,7 +253,7 @@ func (pdc *ProcDefCreate) Save(ctx context.Context) (*ProcDef, error) {
 	if err := pdc.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks[*ProcDef, ProcDefMutation](ctx, pdc.sqlSave, pdc.mutation, pdc.hooks)
+	return withHooks(ctx, pdc.sqlSave, pdc.mutation, pdc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -312,11 +309,11 @@ func (pdc *ProcDefCreate) check() error {
 	if _, ok := pdc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ProcDef.created_at"`)}
 	}
+	if _, ok := pdc.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "ProcDef.tenant_id"`)}
+	}
 	if _, ok := pdc.mutation.DeploymentID(); !ok {
 		return &ValidationError{Name: "deployment_id", err: errors.New(`ent: missing required field "ProcDef.deployment_id"`)}
-	}
-	if _, ok := pdc.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "ProcDef.org_id"`)}
 	}
 	if _, ok := pdc.mutation.AppID(); !ok {
 		return &ValidationError{Name: "app_id", err: errors.New(`ent: missing required field "ProcDef.app_id"`)}
@@ -363,6 +360,8 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 		_node = &ProcDef{config: pdc.config}
 		_spec = sqlgraph.NewCreateSpec(procdef.Table, sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt))
 	)
+	_spec.Schema = pdc.schemaConfig.ProcDef
+	_spec.OnConflict = pdc.conflict
 	if id, ok := pdc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -383,9 +382,9 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 		_spec.SetField(procdef.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := pdc.mutation.OrgID(); ok {
-		_spec.SetField(procdef.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
+	if value, ok := pdc.mutation.TenantID(); ok {
+		_spec.SetField(procdef.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := pdc.mutation.AppID(); ok {
 		_spec.SetField(procdef.FieldAppID, field.TypeInt, value)
@@ -415,21 +414,17 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 		_spec.SetField(procdef.FieldVersionTag, field.TypeString, value)
 		_node.VersionTag = value
 	}
-	if value, ok := pdc.mutation.ResourceName(); ok {
-		_spec.SetField(procdef.FieldResourceName, field.TypeString, value)
-		_node.ResourceName = value
+	if value, ok := pdc.mutation.ResourceKey(); ok {
+		_spec.SetField(procdef.FieldResourceKey, field.TypeString, value)
+		_node.ResourceKey = value
 	}
-	if value, ok := pdc.mutation.DgrmResourceName(); ok {
-		_spec.SetField(procdef.FieldDgrmResourceName, field.TypeString, value)
-		_node.DgrmResourceName = value
+	if value, ok := pdc.mutation.ResourceID(); ok {
+		_spec.SetField(procdef.FieldResourceID, field.TypeInt, value)
+		_node.ResourceID = value
 	}
 	if value, ok := pdc.mutation.Status(); ok {
 		_spec.SetField(procdef.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
-	}
-	if value, ok := pdc.mutation.ResourceData(); ok {
-		_spec.SetField(procdef.FieldResourceData, field.TypeBytes, value)
-		_node.ResourceData = value
 	}
 	if nodes := pdc.mutation.DeploymentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -439,12 +434,10 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 			Columns: []string{procdef.DeploymentColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: deployment.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(deployment.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pdc.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -459,12 +452,10 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pdc.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -473,10 +464,611 @@ func (pdc *ProcDefCreate) createSpec() (*ProcDef, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.ProcDef.Create().
+//		SetCreatedBy(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ProcDefUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (pdc *ProcDefCreate) OnConflict(opts ...sql.ConflictOption) *ProcDefUpsertOne {
+	pdc.conflict = opts
+	return &ProcDefUpsertOne{
+		create: pdc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (pdc *ProcDefCreate) OnConflictColumns(columns ...string) *ProcDefUpsertOne {
+	pdc.conflict = append(pdc.conflict, sql.ConflictColumns(columns...))
+	return &ProcDefUpsertOne{
+		create: pdc,
+	}
+}
+
+type (
+	// ProcDefUpsertOne is the builder for "upsert"-ing
+	//  one ProcDef node.
+	ProcDefUpsertOne struct {
+		create *ProcDefCreate
+	}
+
+	// ProcDefUpsert is the "OnConflict" setter.
+	ProcDefUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcDefUpsert) SetUpdatedBy(v int) *ProcDefUpsert {
+	u.Set(procdef.FieldUpdatedBy, v)
+	return u
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateUpdatedBy() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldUpdatedBy)
+	return u
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcDefUpsert) AddUpdatedBy(v int) *ProcDefUpsert {
+	u.Add(procdef.FieldUpdatedBy, v)
+	return u
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcDefUpsert) ClearUpdatedBy() *ProcDefUpsert {
+	u.SetNull(procdef.FieldUpdatedBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcDefUpsert) SetUpdatedAt(v time.Time) *ProcDefUpsert {
+	u.Set(procdef.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateUpdatedAt() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldUpdatedAt)
+	return u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcDefUpsert) ClearUpdatedAt() *ProcDefUpsert {
+	u.SetNull(procdef.FieldUpdatedAt)
+	return u
+}
+
+// SetCategory sets the "category" field.
+func (u *ProcDefUpsert) SetCategory(v string) *ProcDefUpsert {
+	u.Set(procdef.FieldCategory, v)
+	return u
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateCategory() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldCategory)
+	return u
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *ProcDefUpsert) ClearCategory() *ProcDefUpsert {
+	u.SetNull(procdef.FieldCategory)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *ProcDefUpsert) SetName(v string) *ProcDefUpsert {
+	u.Set(procdef.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateName() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldName)
+	return u
+}
+
+// ClearName clears the value of the "name" field.
+func (u *ProcDefUpsert) ClearName() *ProcDefUpsert {
+	u.SetNull(procdef.FieldName)
+	return u
+}
+
+// SetKey sets the "key" field.
+func (u *ProcDefUpsert) SetKey(v string) *ProcDefUpsert {
+	u.Set(procdef.FieldKey, v)
+	return u
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateKey() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldKey)
+	return u
+}
+
+// SetVersion sets the "version" field.
+func (u *ProcDefUpsert) SetVersion(v int32) *ProcDefUpsert {
+	u.Set(procdef.FieldVersion, v)
+	return u
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateVersion() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldVersion)
+	return u
+}
+
+// AddVersion adds v to the "version" field.
+func (u *ProcDefUpsert) AddVersion(v int32) *ProcDefUpsert {
+	u.Add(procdef.FieldVersion, v)
+	return u
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *ProcDefUpsert) ClearVersion() *ProcDefUpsert {
+	u.SetNull(procdef.FieldVersion)
+	return u
+}
+
+// SetRevision sets the "revision" field.
+func (u *ProcDefUpsert) SetRevision(v int32) *ProcDefUpsert {
+	u.Set(procdef.FieldRevision, v)
+	return u
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateRevision() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldRevision)
+	return u
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *ProcDefUpsert) AddRevision(v int32) *ProcDefUpsert {
+	u.Add(procdef.FieldRevision, v)
+	return u
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *ProcDefUpsert) ClearRevision() *ProcDefUpsert {
+	u.SetNull(procdef.FieldRevision)
+	return u
+}
+
+// SetVersionTag sets the "version_tag" field.
+func (u *ProcDefUpsert) SetVersionTag(v string) *ProcDefUpsert {
+	u.Set(procdef.FieldVersionTag, v)
+	return u
+}
+
+// UpdateVersionTag sets the "version_tag" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateVersionTag() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldVersionTag)
+	return u
+}
+
+// ClearVersionTag clears the value of the "version_tag" field.
+func (u *ProcDefUpsert) ClearVersionTag() *ProcDefUpsert {
+	u.SetNull(procdef.FieldVersionTag)
+	return u
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *ProcDefUpsert) SetResourceKey(v string) *ProcDefUpsert {
+	u.Set(procdef.FieldResourceKey, v)
+	return u
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateResourceKey() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldResourceKey)
+	return u
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *ProcDefUpsert) ClearResourceKey() *ProcDefUpsert {
+	u.SetNull(procdef.FieldResourceKey)
+	return u
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *ProcDefUpsert) SetResourceID(v int) *ProcDefUpsert {
+	u.Set(procdef.FieldResourceID, v)
+	return u
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateResourceID() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldResourceID)
+	return u
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *ProcDefUpsert) AddResourceID(v int) *ProcDefUpsert {
+	u.Add(procdef.FieldResourceID, v)
+	return u
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *ProcDefUpsert) ClearResourceID() *ProcDefUpsert {
+	u.SetNull(procdef.FieldResourceID)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcDefUpsert) SetStatus(v typex.SimpleStatus) *ProcDefUpsert {
+	u.Set(procdef.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcDefUpsert) UpdateStatus() *ProcDefUpsert {
+	u.SetExcluded(procdef.FieldStatus)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(procdef.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *ProcDefUpsertOne) UpdateNewValues() *ProcDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(procdef.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedBy(); exists {
+			s.SetIgnore(procdef.FieldCreatedBy)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(procdef.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(procdef.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.DeploymentID(); exists {
+			s.SetIgnore(procdef.FieldDeploymentID)
+		}
+		if _, exists := u.create.mutation.AppID(); exists {
+			s.SetIgnore(procdef.FieldAppID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *ProcDefUpsertOne) Ignore() *ProcDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ProcDefUpsertOne) DoNothing() *ProcDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ProcDefCreate.OnConflict
+// documentation for more info.
+func (u *ProcDefUpsertOne) Update(set func(*ProcDefUpsert)) *ProcDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ProcDefUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcDefUpsertOne) SetUpdatedBy(v int) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcDefUpsertOne) AddUpdatedBy(v int) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateUpdatedBy() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcDefUpsertOne) ClearUpdatedBy() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcDefUpsertOne) SetUpdatedAt(v time.Time) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateUpdatedAt() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcDefUpsertOne) ClearUpdatedAt() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetCategory sets the "category" field.
+func (u *ProcDefUpsertOne) SetCategory(v string) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetCategory(v)
+	})
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateCategory() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateCategory()
+	})
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *ProcDefUpsertOne) ClearCategory() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearCategory()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *ProcDefUpsertOne) SetName(v string) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateName() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *ProcDefUpsertOne) ClearName() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *ProcDefUpsertOne) SetKey(v string) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateKey() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateKey()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *ProcDefUpsertOne) SetVersion(v int32) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// AddVersion adds v to the "version" field.
+func (u *ProcDefUpsertOne) AddVersion(v int32) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateVersion() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *ProcDefUpsertOne) ClearVersion() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetRevision sets the "revision" field.
+func (u *ProcDefUpsertOne) SetRevision(v int32) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetRevision(v)
+	})
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *ProcDefUpsertOne) AddRevision(v int32) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddRevision(v)
+	})
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateRevision() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateRevision()
+	})
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *ProcDefUpsertOne) ClearRevision() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearRevision()
+	})
+}
+
+// SetVersionTag sets the "version_tag" field.
+func (u *ProcDefUpsertOne) SetVersionTag(v string) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetVersionTag(v)
+	})
+}
+
+// UpdateVersionTag sets the "version_tag" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateVersionTag() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateVersionTag()
+	})
+}
+
+// ClearVersionTag clears the value of the "version_tag" field.
+func (u *ProcDefUpsertOne) ClearVersionTag() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearVersionTag()
+	})
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *ProcDefUpsertOne) SetResourceKey(v string) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetResourceKey(v)
+	})
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateResourceKey() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateResourceKey()
+	})
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *ProcDefUpsertOne) ClearResourceKey() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearResourceKey()
+	})
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *ProcDefUpsertOne) SetResourceID(v int) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetResourceID(v)
+	})
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *ProcDefUpsertOne) AddResourceID(v int) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddResourceID(v)
+	})
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateResourceID() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateResourceID()
+	})
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *ProcDefUpsertOne) ClearResourceID() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearResourceID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcDefUpsertOne) SetStatus(v typex.SimpleStatus) *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcDefUpsertOne) UpdateStatus() *ProcDefUpsertOne {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *ProcDefUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ProcDefCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ProcDefUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *ProcDefUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *ProcDefUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // ProcDefCreateBulk is the builder for creating many ProcDef entities in bulk.
 type ProcDefCreateBulk struct {
 	config
 	builders []*ProcDefCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the ProcDef entities in the database.
@@ -497,12 +1089,13 @@ func (pdcb *ProcDefCreateBulk) Save(ctx context.Context) ([]*ProcDef, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, pdcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = pdcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, pdcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -553,6 +1146,377 @@ func (pdcb *ProcDefCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (pdcb *ProcDefCreateBulk) ExecX(ctx context.Context) {
 	if err := pdcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.ProcDef.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ProcDefUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (pdcb *ProcDefCreateBulk) OnConflict(opts ...sql.ConflictOption) *ProcDefUpsertBulk {
+	pdcb.conflict = opts
+	return &ProcDefUpsertBulk{
+		create: pdcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (pdcb *ProcDefCreateBulk) OnConflictColumns(columns ...string) *ProcDefUpsertBulk {
+	pdcb.conflict = append(pdcb.conflict, sql.ConflictColumns(columns...))
+	return &ProcDefUpsertBulk{
+		create: pdcb,
+	}
+}
+
+// ProcDefUpsertBulk is the builder for "upsert"-ing
+// a bulk of ProcDef nodes.
+type ProcDefUpsertBulk struct {
+	create *ProcDefCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(procdef.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *ProcDefUpsertBulk) UpdateNewValues() *ProcDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(procdef.FieldID)
+			}
+			if _, exists := b.mutation.CreatedBy(); exists {
+				s.SetIgnore(procdef.FieldCreatedBy)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(procdef.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(procdef.FieldTenantID)
+			}
+			if _, exists := b.mutation.DeploymentID(); exists {
+				s.SetIgnore(procdef.FieldDeploymentID)
+			}
+			if _, exists := b.mutation.AppID(); exists {
+				s.SetIgnore(procdef.FieldAppID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.ProcDef.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *ProcDefUpsertBulk) Ignore() *ProcDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ProcDefUpsertBulk) DoNothing() *ProcDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ProcDefCreateBulk.OnConflict
+// documentation for more info.
+func (u *ProcDefUpsertBulk) Update(set func(*ProcDefUpsert)) *ProcDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ProcDefUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcDefUpsertBulk) SetUpdatedBy(v int) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcDefUpsertBulk) AddUpdatedBy(v int) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateUpdatedBy() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcDefUpsertBulk) ClearUpdatedBy() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcDefUpsertBulk) SetUpdatedAt(v time.Time) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateUpdatedAt() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcDefUpsertBulk) ClearUpdatedAt() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetCategory sets the "category" field.
+func (u *ProcDefUpsertBulk) SetCategory(v string) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetCategory(v)
+	})
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateCategory() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateCategory()
+	})
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *ProcDefUpsertBulk) ClearCategory() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearCategory()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *ProcDefUpsertBulk) SetName(v string) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateName() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *ProcDefUpsertBulk) ClearName() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *ProcDefUpsertBulk) SetKey(v string) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateKey() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateKey()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *ProcDefUpsertBulk) SetVersion(v int32) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// AddVersion adds v to the "version" field.
+func (u *ProcDefUpsertBulk) AddVersion(v int32) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateVersion() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// ClearVersion clears the value of the "version" field.
+func (u *ProcDefUpsertBulk) ClearVersion() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearVersion()
+	})
+}
+
+// SetRevision sets the "revision" field.
+func (u *ProcDefUpsertBulk) SetRevision(v int32) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetRevision(v)
+	})
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *ProcDefUpsertBulk) AddRevision(v int32) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddRevision(v)
+	})
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateRevision() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateRevision()
+	})
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *ProcDefUpsertBulk) ClearRevision() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearRevision()
+	})
+}
+
+// SetVersionTag sets the "version_tag" field.
+func (u *ProcDefUpsertBulk) SetVersionTag(v string) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetVersionTag(v)
+	})
+}
+
+// UpdateVersionTag sets the "version_tag" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateVersionTag() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateVersionTag()
+	})
+}
+
+// ClearVersionTag clears the value of the "version_tag" field.
+func (u *ProcDefUpsertBulk) ClearVersionTag() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearVersionTag()
+	})
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *ProcDefUpsertBulk) SetResourceKey(v string) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetResourceKey(v)
+	})
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateResourceKey() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateResourceKey()
+	})
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *ProcDefUpsertBulk) ClearResourceKey() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearResourceKey()
+	})
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *ProcDefUpsertBulk) SetResourceID(v int) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetResourceID(v)
+	})
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *ProcDefUpsertBulk) AddResourceID(v int) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.AddResourceID(v)
+	})
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateResourceID() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateResourceID()
+	})
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *ProcDefUpsertBulk) ClearResourceID() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.ClearResourceID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcDefUpsertBulk) SetStatus(v typex.SimpleStatus) *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcDefUpsertBulk) UpdateStatus() *ProcDefUpsertBulk {
+	return u.Update(func(s *ProcDefUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *ProcDefUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the ProcDefCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ProcDefCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ProcDefUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

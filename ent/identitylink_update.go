@@ -13,6 +13,8 @@ import (
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // IdentityLinkUpdate is the builder for updating IdentityLink entities.
@@ -165,7 +167,7 @@ func (ilu *IdentityLinkUpdate) ClearTask() *IdentityLinkUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ilu *IdentityLinkUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks[int, IdentityLinkMutation](ctx, ilu.sqlSave, ilu.mutation, ilu.hooks)
+	return withHooks(ctx, ilu.sqlSave, ilu.mutation, ilu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -267,12 +269,10 @@ func (ilu *IdentityLinkUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{identitylink.TaskColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = ilu.schemaConfig.IdentityLink
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := ilu.mutation.TaskIDs(); len(nodes) > 0 {
@@ -283,17 +283,17 @@ func (ilu *IdentityLinkUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{identitylink.TaskColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = ilu.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = ilu.schemaConfig.IdentityLink
+	ctx = internal.NewSchemaConfigContext(ctx, ilu.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, ilu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{identitylink.Label}
@@ -464,7 +464,7 @@ func (iluo *IdentityLinkUpdateOne) Select(field string, fields ...string) *Ident
 
 // Save executes the query and returns the updated IdentityLink entity.
 func (iluo *IdentityLinkUpdateOne) Save(ctx context.Context) (*IdentityLink, error) {
-	return withHooks[*IdentityLink, IdentityLinkMutation](ctx, iluo.sqlSave, iluo.mutation, iluo.hooks)
+	return withHooks(ctx, iluo.sqlSave, iluo.mutation, iluo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -583,12 +583,10 @@ func (iluo *IdentityLinkUpdateOne) sqlSave(ctx context.Context) (_node *Identity
 			Columns: []string{identitylink.TaskColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = iluo.schemaConfig.IdentityLink
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := iluo.mutation.TaskIDs(); len(nodes) > 0 {
@@ -599,17 +597,17 @@ func (iluo *IdentityLinkUpdateOne) sqlSave(ctx context.Context) (_node *Identity
 			Columns: []string{identitylink.TaskColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = iluo.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = iluo.schemaConfig.IdentityLink
+	ctx = internal.NewSchemaConfigContext(ctx, iluo.schemaConfig)
 	_node = &IdentityLink{config: iluo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

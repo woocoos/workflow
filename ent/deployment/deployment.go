@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -21,8 +23,8 @@ const (
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldAppID holds the string denoting the app_id field in the database.
 	FieldAppID = "app_id"
 	// FieldName holds the string denoting the name field in the database.
@@ -60,7 +62,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
-	FieldOrgID,
+	FieldTenantID,
 	FieldAppID,
 	FieldName,
 	FieldSource,
@@ -83,7 +85,8 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
-	Hooks [1]ent.Hook
+	Hooks        [2]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultDeployTime holds the default value on creation for the "deploy_time" field.
@@ -91,3 +94,98 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() int
 )
+
+// OrderOption defines the ordering options for the Deployment queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedBy orders the results by the updated_by field.
+func ByUpdatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedBy, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByAppID orders the results by the app_id field.
+func ByAppID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAppID, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// BySource orders the results by the source field.
+func BySource(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSource, opts...).ToFunc()
+}
+
+// ByDeployTime orders the results by the deploy_time field.
+func ByDeployTime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeployTime, opts...).ToFunc()
+}
+
+// ByProcDefsCount orders the results by proc_defs count.
+func ByProcDefsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProcDefsStep(), opts...)
+	}
+}
+
+// ByProcDefs orders the results by proc_defs terms.
+func ByProcDefs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProcDefsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByDecisionReqsCount orders the results by decision_reqs count.
+func ByDecisionReqsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDecisionReqsStep(), opts...)
+	}
+}
+
+// ByDecisionReqs orders the results by decision_reqs terms.
+func ByDecisionReqs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDecisionReqsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProcDefsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProcDefsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProcDefsTable, ProcDefsColumn),
+	)
+}
+func newDecisionReqsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DecisionReqsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DecisionReqsTable, DecisionReqsColumn),
+	)
+}

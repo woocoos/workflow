@@ -4,21 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/tsingsun/woocoo/pkg/conf"
+	"github.com/woocoos/entco/pkg/identity"
 	"github.com/woocoos/entco/pkg/snowflake"
-	portal "github.com/woocoos/knockout/ent"
-	"github.com/woocoos/knockout/security"
+	"github.com/woocoos/workflow/api/graphql/model"
+	"github.com/woocoos/workflow/codegen/entgen/types"
 	"github.com/woocoos/workflow/ent"
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/task"
-	"github.com/woocoos/workflow/graph/entgen/types"
-	"github.com/woocoos/workflow/graph/model"
-	"github.com/woocoos/workflow/identity"
 	"github.com/woocoos/workflow/pkg/engine"
-	"github.com/woocoos/workflow/service/util"
 	"github.com/woocoos/workflow/service/workflow"
-	"io"
+	"os"
 	"path/filepath"
-	"strconv"
 )
 
 var (
@@ -26,9 +22,8 @@ var (
 )
 
 type Service struct {
-	WFDB     *ent.Client
-	PortalDB *portal.Client
-	Engine   workflow.Service
+	WFDB   *ent.Client
+	Engine *workflow.Service
 }
 
 func (s *Service) createFileName(id, key, name string) string {
@@ -39,18 +34,18 @@ func (s *Service) createFileName(id, key, name string) string {
 // CreateDeployment 创建部署
 func (s *Service) CreateDeployment(ctx context.Context, input model.DeployDiagramInput) (dp *ent.Deployment, err error) {
 	client := ent.FromContext(ctx)
-	did := snowflake.New()
+	did := int(snowflake.New().Int64())
 	pdBuiler := make([]*ent.ProcDefCreate, 0)
 	ddBuiler := make([]*ent.DecisionDefCreate, 0)
 	drdBuilder := make([]*ent.DecisionReqDefCreate, 0)
 	// save deployment
 	versionTag := ""
-	for _, file := range input.Files {
-		fb, err := io.ReadAll(file.File.File)
+	for i, fid := range input.ResourceID {
+		fb, err := os.ReadFile(filepath.Join(s.Engine.ResourceDir, input.ResourceKey[i]))
 		if err != nil {
 			return nil, err
 		}
-		eg, err := s.Engine.BuildEngine(file.File.Filename, "", fb)
+		eg, err := s.Engine.BuildEngine(input.ResourceKey[i], "", fb)
 		if err != nil {
 			return nil, err
 		}
@@ -62,22 +57,22 @@ func (s *Service) CreateDeployment(ctx context.Context, input model.DeployDiagra
 				if process.VersionTag != "" {
 					versionTag = process.VersionTag
 				}
-				cr := client.ProcDef.Create().SetDeploymentID(int(did.Int64())).SetOrgID(input.OrgID).SetAppID(input.AppID).
-					SetKey(process.Id).SetResourceName(file.File.Filename).SetVersionTag(process.VersionTag).
-					SetResourceData(fb)
+				cr := client.ProcDef.Create().SetDeploymentID(did).SetAppID(input.AppID).
+					SetKey(process.Id).SetName(process.Name).SetResourceID(fid).SetResourceKey(input.ResourceKey[i]).
+					SetVersionTag(process.VersionTag)
 				pdBuiler = append(pdBuiler, cr)
 			}
 		case *engine.DMNLoader:
-			dreqid := snowflake.New()
+			dreqid := int(snowflake.New().Int64())
 			// 多个决策定义在一个文件中
-			drdBuilder = append(drdBuilder, client.DecisionReqDef.Create().SetID(int(dreqid.Int64())).
-				SetDeploymentID(int(did.Int64())).SetOrgID(input.OrgID).SetAppID(input.AppID).
-				SetKey(eg.GetId()).SetName(eg.GetName()).SetResourceData(fb),
+			drdBuilder = append(drdBuilder, client.DecisionReqDef.Create().SetID(dreqid).
+				SetDeploymentID(did).SetAppID(input.AppID).
+				SetKey(eg.GetId()).SetName(eg.GetName()).SetResourceID(fid).SetResourceKey(input.ResourceKey[i]),
 			)
 			for _, decision := range eg.Spec.Decisions {
-				cr := client.DecisionDef.Create().SetDeploymentID(int(did.Int64())).SetReqDefID(int(dreqid.Int64())).
-					SetOrgID(input.OrgID).SetAppID(input.AppID).SetReqDefKey(eg.GetId()).
-					SetKey(decision.Id).SetResourceName(file.File.Filename).SetVersionTag(versionTag)
+				cr := client.DecisionDef.Create().SetDeploymentID(did).SetReqDefID(dreqid).SetAppID(input.AppID).
+					SetReqDefKey(eg.GetId()).
+					SetKey(decision.Id).SetName(decision.Name).SetVersionTag(versionTag)
 				ddBuiler = append(ddBuiler, cr)
 			}
 
@@ -95,35 +90,16 @@ func (s *Service) CreateDeployment(ctx context.Context, input model.DeployDiagra
 		for _, create := range drdBuilder {
 			create.SetVersion(pds[0].Version)
 		}
-
-		if conf.Global().IsSet("workflow.deploymentDir") {
-			for _, pd := range pds {
-				err = util.SaveResource(strconv.Itoa(pd.ID), pd.Key, pd.ResourceName, pd.ResourceData)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
 	}
 	if len(ddBuiler) != 0 {
-		dds, err := client.DecisionReqDef.CreateBulk(drdBuilder...).Save(ctx)
-		if err != nil {
+		if err = client.DecisionReqDef.CreateBulk(drdBuilder...).Exec(ctx); err != nil {
 			return nil, err
 		}
-		_, err = client.DecisionDef.CreateBulk(ddBuiler...).Save(ctx)
-		if err != nil {
+		if err = client.DecisionDef.CreateBulk(ddBuiler...).Exec(ctx); err != nil {
 			return nil, err
-		}
-		if conf.Global().IsSet("workflow.deploymentDir") {
-			for _, dd := range dds {
-				err = util.SaveResource(strconv.Itoa(dd.ID), dd.Key, dd.ResourceName, dd.ResourceData)
-				if err != nil {
-					return nil, err
-				}
-			}
 		}
 	}
-	return client.Deployment.Create().SetID(int(did.Int64())).SetOrgID(input.OrgID).SetAppID(input.AppID).
+	return client.Deployment.Create().SetID(did).SetAppID(input.AppID).
 		SetName(input.Name).Save(ctx)
 }
 
@@ -135,13 +111,16 @@ func (s *Service) StartProcessInstance(ctx context.Context, input model.StartPro
 
 // ClaimTask 认领任务
 func (s *Service) ClaimTask(ctx context.Context, taskID int) (*ent.Task, error) {
-	uid := security.UserIDFromContext(ctx)
-	client := ent.FromContext(ctx)
-	tid, err := identity.TenantIDFromWebContext(ctx)
+	uid, err := identity.UserIDFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	trow, err := client.Task.Query().Where(task.ID(taskID), task.OrgID(tid)).
+	client := ent.FromContext(ctx)
+	tid, err := identity.TenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	trow, err := client.Task.Query().Where(task.ID(taskID), task.TenantID(tid)).
 		WithTaskIdentities(func(query *ent.IdentityLinkQuery) {
 			query.Where(identitylink.LinkTypeEQ(identitylink.LinkTypeAssignee), identitylink.UserID(uid))
 		}).Only(ctx)

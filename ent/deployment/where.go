@@ -8,6 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ID filters vertices based on their ID field.
@@ -75,9 +77,9 @@ func UpdatedAt(v time.Time) predicate.Deployment {
 	return predicate.Deployment(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// OrgID applies equality check predicate on the "org_id" field. It's identical to OrgIDEQ.
-func OrgID(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldEQ(FieldOrgID, v))
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldEQ(FieldTenantID, v))
 }
 
 // AppID applies equality check predicate on the "app_id" field. It's identical to AppIDEQ.
@@ -280,44 +282,44 @@ func UpdatedAtNotNil() predicate.Deployment {
 	return predicate.Deployment(sql.FieldNotNull(FieldUpdatedAt))
 }
 
-// OrgIDEQ applies the EQ predicate on the "org_id" field.
-func OrgIDEQ(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldEQ(FieldOrgID, v))
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldEQ(FieldTenantID, v))
 }
 
-// OrgIDNEQ applies the NEQ predicate on the "org_id" field.
-func OrgIDNEQ(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldNEQ(FieldOrgID, v))
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldNEQ(FieldTenantID, v))
 }
 
-// OrgIDIn applies the In predicate on the "org_id" field.
-func OrgIDIn(vs ...int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldIn(FieldOrgID, vs...))
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldIn(FieldTenantID, vs...))
 }
 
-// OrgIDNotIn applies the NotIn predicate on the "org_id" field.
-func OrgIDNotIn(vs ...int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldNotIn(FieldOrgID, vs...))
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldNotIn(FieldTenantID, vs...))
 }
 
-// OrgIDGT applies the GT predicate on the "org_id" field.
-func OrgIDGT(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldGT(FieldOrgID, v))
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldGT(FieldTenantID, v))
 }
 
-// OrgIDGTE applies the GTE predicate on the "org_id" field.
-func OrgIDGTE(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldGTE(FieldOrgID, v))
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldGTE(FieldTenantID, v))
 }
 
-// OrgIDLT applies the LT predicate on the "org_id" field.
-func OrgIDLT(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldLT(FieldOrgID, v))
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldLT(FieldTenantID, v))
 }
 
-// OrgIDLTE applies the LTE predicate on the "org_id" field.
-func OrgIDLTE(v int) predicate.Deployment {
-	return predicate.Deployment(sql.FieldLTE(FieldOrgID, v))
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v int) predicate.Deployment {
+	return predicate.Deployment(sql.FieldLTE(FieldTenantID, v))
 }
 
 // AppIDEQ applies the EQ predicate on the "app_id" field.
@@ -557,6 +559,9 @@ func HasProcDefs() predicate.Deployment {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, ProcDefsTable, ProcDefsColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcDef
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -564,11 +569,10 @@ func HasProcDefs() predicate.Deployment {
 // HasProcDefsWith applies the HasEdge predicate on the "proc_defs" edge with a given conditions (other predicates).
 func HasProcDefsWith(preds ...predicate.ProcDef) predicate.Deployment {
 	return predicate.Deployment(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(ProcDefsInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, ProcDefsTable, ProcDefsColumn),
-		)
+		step := newProcDefsStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcDef
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -584,6 +588,9 @@ func HasDecisionReqs() predicate.Deployment {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, DecisionReqsTable, DecisionReqsColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionReqDef
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -591,11 +598,10 @@ func HasDecisionReqs() predicate.Deployment {
 // HasDecisionReqsWith applies the HasEdge predicate on the "decision_reqs" edge with a given conditions (other predicates).
 func HasDecisionReqsWith(preds ...predicate.DecisionReqDef) predicate.Deployment {
 	return predicate.Deployment(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(DecisionReqsInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, DecisionReqsTable, DecisionReqsColumn),
-		)
+		step := newDecisionReqsStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionReqDef
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -606,32 +612,15 @@ func HasDecisionReqsWith(preds ...predicate.DecisionReqDef) predicate.Deployment
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Deployment) predicate.Deployment {
-	return predicate.Deployment(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Deployment(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.Deployment) predicate.Deployment {
-	return predicate.Deployment(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.Deployment(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.Deployment) predicate.Deployment {
-	return predicate.Deployment(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.Deployment(sql.NotPredicates(p))
 }

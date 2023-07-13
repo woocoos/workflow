@@ -19,6 +19,6 @@ store:
     dsn: "root:@tcp(localhost:3306)/workflow?parseTime=true&loc=Local"
 workflow:
   # 流程部署共享文件夹,可选择用文件存储
-  deploymentDir: ../web/tmp
+  resourceDir: ../web/tmp
 
 snowflake:

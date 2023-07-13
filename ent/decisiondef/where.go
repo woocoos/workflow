@@ -8,6 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ID filters vertices based on their ID field.
@@ -75,14 +77,14 @@ func UpdatedAt(v time.Time) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldEQ(FieldTenantID, v))
+}
+
 // DeploymentID applies equality check predicate on the "deployment_id" field. It's identical to DeploymentIDEQ.
 func DeploymentID(v int) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldEQ(FieldDeploymentID, v))
-}
-
-// OrgID applies equality check predicate on the "org_id" field. It's identical to OrgIDEQ.
-func OrgID(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldOrgID, v))
 }
 
 // AppID applies equality check predicate on the "app_id" field. It's identical to AppIDEQ.
@@ -128,16 +130,6 @@ func Revision(v int32) predicate.DecisionDef {
 // VersionTag applies equality check predicate on the "version_tag" field. It's identical to VersionTagEQ.
 func VersionTag(v string) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldEQ(FieldVersionTag, v))
-}
-
-// ResourceName applies equality check predicate on the "resource_name" field. It's identical to ResourceNameEQ.
-func ResourceName(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldResourceName, v))
-}
-
-// DgrmResourceName applies equality check predicate on the "dgrm_resource_name" field. It's identical to DgrmResourceNameEQ.
-func DgrmResourceName(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldDgrmResourceName, v))
 }
 
 // CreatedByEQ applies the EQ predicate on the "created_by" field.
@@ -320,6 +312,46 @@ func UpdatedAtNotNil() predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldNotNull(FieldUpdatedAt))
 }
 
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldNotIn(FieldTenantID, vs...))
+}
+
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldGT(FieldTenantID, v))
+}
+
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldGTE(FieldTenantID, v))
+}
+
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldLT(FieldTenantID, v))
+}
+
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v int) predicate.DecisionDef {
+	return predicate.DecisionDef(sql.FieldLTE(FieldTenantID, v))
+}
+
 // DeploymentIDEQ applies the EQ predicate on the "deployment_id" field.
 func DeploymentIDEQ(v int) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldEQ(FieldDeploymentID, v))
@@ -358,46 +390,6 @@ func DeploymentIDLT(v int) predicate.DecisionDef {
 // DeploymentIDLTE applies the LTE predicate on the "deployment_id" field.
 func DeploymentIDLTE(v int) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldLTE(FieldDeploymentID, v))
-}
-
-// OrgIDEQ applies the EQ predicate on the "org_id" field.
-func OrgIDEQ(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldOrgID, v))
-}
-
-// OrgIDNEQ applies the NEQ predicate on the "org_id" field.
-func OrgIDNEQ(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNEQ(FieldOrgID, v))
-}
-
-// OrgIDIn applies the In predicate on the "org_id" field.
-func OrgIDIn(vs ...int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldIn(FieldOrgID, vs...))
-}
-
-// OrgIDNotIn applies the NotIn predicate on the "org_id" field.
-func OrgIDNotIn(vs ...int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNotIn(FieldOrgID, vs...))
-}
-
-// OrgIDGT applies the GT predicate on the "org_id" field.
-func OrgIDGT(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGT(FieldOrgID, v))
-}
-
-// OrgIDGTE applies the GTE predicate on the "org_id" field.
-func OrgIDGTE(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGTE(FieldOrgID, v))
-}
-
-// OrgIDLT applies the LT predicate on the "org_id" field.
-func OrgIDLT(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLT(FieldOrgID, v))
-}
-
-// OrgIDLTE applies the LTE predicate on the "org_id" field.
-func OrgIDLTE(v int) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLTE(FieldOrgID, v))
 }
 
 // AppIDEQ applies the EQ predicate on the "app_id" field.
@@ -905,156 +897,6 @@ func VersionTagContainsFold(v string) predicate.DecisionDef {
 	return predicate.DecisionDef(sql.FieldContainsFold(FieldVersionTag, v))
 }
 
-// ResourceNameEQ applies the EQ predicate on the "resource_name" field.
-func ResourceNameEQ(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldResourceName, v))
-}
-
-// ResourceNameNEQ applies the NEQ predicate on the "resource_name" field.
-func ResourceNameNEQ(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNEQ(FieldResourceName, v))
-}
-
-// ResourceNameIn applies the In predicate on the "resource_name" field.
-func ResourceNameIn(vs ...string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldIn(FieldResourceName, vs...))
-}
-
-// ResourceNameNotIn applies the NotIn predicate on the "resource_name" field.
-func ResourceNameNotIn(vs ...string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNotIn(FieldResourceName, vs...))
-}
-
-// ResourceNameGT applies the GT predicate on the "resource_name" field.
-func ResourceNameGT(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGT(FieldResourceName, v))
-}
-
-// ResourceNameGTE applies the GTE predicate on the "resource_name" field.
-func ResourceNameGTE(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGTE(FieldResourceName, v))
-}
-
-// ResourceNameLT applies the LT predicate on the "resource_name" field.
-func ResourceNameLT(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLT(FieldResourceName, v))
-}
-
-// ResourceNameLTE applies the LTE predicate on the "resource_name" field.
-func ResourceNameLTE(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLTE(FieldResourceName, v))
-}
-
-// ResourceNameContains applies the Contains predicate on the "resource_name" field.
-func ResourceNameContains(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldContains(FieldResourceName, v))
-}
-
-// ResourceNameHasPrefix applies the HasPrefix predicate on the "resource_name" field.
-func ResourceNameHasPrefix(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldHasPrefix(FieldResourceName, v))
-}
-
-// ResourceNameHasSuffix applies the HasSuffix predicate on the "resource_name" field.
-func ResourceNameHasSuffix(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldHasSuffix(FieldResourceName, v))
-}
-
-// ResourceNameIsNil applies the IsNil predicate on the "resource_name" field.
-func ResourceNameIsNil() predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldIsNull(FieldResourceName))
-}
-
-// ResourceNameNotNil applies the NotNil predicate on the "resource_name" field.
-func ResourceNameNotNil() predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNotNull(FieldResourceName))
-}
-
-// ResourceNameEqualFold applies the EqualFold predicate on the "resource_name" field.
-func ResourceNameEqualFold(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEqualFold(FieldResourceName, v))
-}
-
-// ResourceNameContainsFold applies the ContainsFold predicate on the "resource_name" field.
-func ResourceNameContainsFold(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldContainsFold(FieldResourceName, v))
-}
-
-// DgrmResourceNameEQ applies the EQ predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameEQ(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEQ(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameNEQ applies the NEQ predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNEQ(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNEQ(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameIn applies the In predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameIn(vs ...string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldIn(FieldDgrmResourceName, vs...))
-}
-
-// DgrmResourceNameNotIn applies the NotIn predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNotIn(vs ...string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNotIn(FieldDgrmResourceName, vs...))
-}
-
-// DgrmResourceNameGT applies the GT predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameGT(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGT(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameGTE applies the GTE predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameGTE(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldGTE(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameLT applies the LT predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameLT(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLT(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameLTE applies the LTE predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameLTE(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldLTE(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameContains applies the Contains predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameContains(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldContains(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameHasPrefix applies the HasPrefix predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameHasPrefix(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldHasPrefix(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameHasSuffix applies the HasSuffix predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameHasSuffix(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldHasSuffix(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameIsNil applies the IsNil predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameIsNil() predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldIsNull(FieldDgrmResourceName))
-}
-
-// DgrmResourceNameNotNil applies the NotNil predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameNotNil() predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldNotNull(FieldDgrmResourceName))
-}
-
-// DgrmResourceNameEqualFold applies the EqualFold predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameEqualFold(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldEqualFold(FieldDgrmResourceName, v))
-}
-
-// DgrmResourceNameContainsFold applies the ContainsFold predicate on the "dgrm_resource_name" field.
-func DgrmResourceNameContainsFold(v string) predicate.DecisionDef {
-	return predicate.DecisionDef(sql.FieldContainsFold(FieldDgrmResourceName, v))
-}
-
 // HasReqDef applies the HasEdge predicate on the "req_def" edge.
 func HasReqDef() predicate.DecisionDef {
 	return predicate.DecisionDef(func(s *sql.Selector) {
@@ -1062,6 +904,9 @@ func HasReqDef() predicate.DecisionDef {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, ReqDefTable, ReqDefColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionDef
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -1069,11 +914,10 @@ func HasReqDef() predicate.DecisionDef {
 // HasReqDefWith applies the HasEdge predicate on the "req_def" edge with a given conditions (other predicates).
 func HasReqDefWith(preds ...predicate.DecisionReqDef) predicate.DecisionDef {
 	return predicate.DecisionDef(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(ReqDefInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, ReqDefTable, ReqDefColumn),
-		)
+		step := newReqDefStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionDef
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -1084,32 +928,15 @@ func HasReqDefWith(preds ...predicate.DecisionReqDef) predicate.DecisionDef {
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.DecisionDef) predicate.DecisionDef {
-	return predicate.DecisionDef(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.DecisionDef(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.DecisionDef) predicate.DecisionDef {
-	return predicate.DecisionDef(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.DecisionDef(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.DecisionDef) predicate.DecisionDef {
-	return predicate.DecisionDef(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.DecisionDef(sql.NotPredicates(p))
 }

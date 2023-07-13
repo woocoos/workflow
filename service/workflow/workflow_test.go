@@ -3,134 +3,123 @@ package workflow
 import (
 	"context"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/tsingsun/woocoo/pkg/gds"
-	portal "github.com/woocoos/knockout/ent"
 	"github.com/woocoos/workflow/ent"
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/pkg/engine"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
-	wfsuite "github.com/woocoos/workflow/test/suite"
+	"github.com/woocoos/workflow/test"
+	wfsuite "github.com/woocoos/workflow/test/testsuite"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 	"testing"
 	"time"
 
-	_ "github.com/woocoos/knockout/ent/runtime"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/woocoos/workflow/ent/runtime"
 )
 
 func SetInstanceRequestDef(ir *engine.InstanceRequest, def *ent.ProcDef) {
-	ir.ProcDefID = def.ID
+	if def.ID != 0 {
+		ir.ProcDefID = def.ID
+	}
 	ir.ProcDefKey = def.Key
-	ir.ResourceName = def.ResourceName
-	ir.ResourceData = def.ResourceData
+	ir.ResourceKey = def.ResourceKey
 }
 
 type TestSuite struct {
-	wfsuite.WFSuite
+	wfsuite.BaseSuite
 	Service *Service
 	def     Definition
-	suite.Suite
 	testsuite.WorkflowTestSuite
+
+	//env *testsuite.TestWorkflowEnvironment
+}
+
+func (ts *TestSuite) SetupTest() {
+	//ts.env = ts.NewTestWorkflowEnvironment()
 }
 
 func (ts *TestSuite) SetupSuite() {
-	builder := make([]*portal.OrgUserCreate, 3)
-	for i := 0; i < 3; i++ {
-		builder[i] = ts.Service.PortalDB.OrgUser.Create().SetID(i + 1).SetUserID(i + 1).SetOrgID(1)
+	ts.BaseSuite.SetupSuite()
+	ts.Service = &Service{
+		Db:           ts.BaseSuite.Db,
+		TaskQueue:    "approval",
+		Client:       ts.BaseSuite.Client,
+		WorkflowType: "BPMNWorkflowDef",
+		ResourceDir:  test.BaseDir(),
 	}
-	ts.Service.PortalDB.OrgUser.CreateBulk(builder...)
+	ts.def = Definition{
+		Service: ts.Service,
+		Exporter: &FileExport{
+			DbExport: DbExport{
+				Service: ts.Service,
+			},
+		},
+	}
+}
+
+func (ts *TestSuite) TearDownSuite() {
+	if ts.Client != nil {
+		ts.Client.Close()
+	}
 }
 
 func TestTestSuite(t *testing.T) {
-	wfs := wfsuite.WFSuite{}
-	wfs.SetupSuite()
-	svc := &Service{
-		WFDB:         wfs.WFDB,
-		PortalDB:     wfs.PortalDB,
-		TaskQueue:    "approval",
-		Client:       wfs.Client,
-		WorkflowType: "BPMNWorkflowDef",
-	}
-	defer wfs.Client.Close()
-	suite.Run(t, &TestSuite{
-		Service: svc,
-		def: Definition{
-			Service:   svc,
-			TaskQueue: "approval",
-			Exporter: &FileExport{
-				DbExport: DbExport{
-					Service: svc,
-				},
-			},
-		},
-	})
+	suite.Run(t, &TestSuite{})
 }
 
-func (ts *TestSuite) Test_BuildWorkflow() {
-	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
-		ProcInst: &ent.ProcInst{
-			ID:        1,
-			ProcDefID: 1633283735837216769,
-			OrgID:     1,
-			AppID:     1,
-			Status:    procinst.StatusReady,
-		},
-		ProcDefKey:   "invoice",
-		ResourceName: "invoice.bpmn",
-	}
-	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
-	ts.True(env.IsWorkflowCompleted())
-	ts.NoError(env.GetWorkflowError())
+func (ts *TestSuite) newBPMN(id string, exporter engine.Exporter) *engine.BPMN {
+	return engine.NewBPMN(engine.WithID(id), engine.WithExporter(exporter),
+		engine.WithResourceDir(ts.Service.ResourceDir))
 }
 
 func (ts *TestSuite) Test_SimpleTask() {
 	env := ts.NewTestWorkflowEnvironment()
-
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
-			Status: procinst.StatusReady,
+			TenantID: 1,
+			Status:   procinst.StatusReady,
 		},
 		Variables: bpmn.Mappings{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-task", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-task", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 	a.Handlers.RegistryHandler("Sleep", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		time.Sleep(time.Second * 2)
 		return nil, nil
 	})
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
 }
 
-func (ts *TestSuite) Test_SimpleUserTask() {
+func (ts *TestSuite) Test_SimpleUserTask_WrongUser() {
 	env := ts.NewTestWorkflowEnvironment()
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
-			ID:        1,
+			ID:        1001,
 			ProcDefID: 1,
-			OrgID:     1,
+			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
 		Variables: bpmn.Mappings{
-			"assignee": "admin",
+			"assignee": "user1",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-user-task", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
-			UserID: gds.Ptr(198640048702208),
+			TenantID: 1,
+			UserID:   gds.Ptr(198640048702208),
 		})
 	}, time.Hour)
 	env.RegisterDelayedCallback(func() {
@@ -141,8 +130,44 @@ func (ts *TestSuite) Test_SimpleUserTask() {
 		})
 	}, time.Hour+time.Second)
 
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
-	env.RegisterActivity(a)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
+	env.RegisterActivity(a.Activity)
+	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
+	ts.True(env.IsWorkflowCompleted())
+	ts.Error(env.GetWorkflowError())
+}
+
+func (ts *TestSuite) Test_SimpleUserTask() {
+	env := ts.NewTestWorkflowEnvironment()
+	wf := engine.InstanceRequest{
+		ProcInst: &ent.ProcInst{
+			ID:        1001,
+			ProcDefID: 1,
+			TenantID:  1,
+			Status:    procinst.StatusReady,
+		},
+		Variables: bpmn.Mappings{
+			"assignee": "user1",
+		},
+	}
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
+	ts.Require().NoError(err)
+	SetInstanceRequestDef(&wf, pd)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
+			UserID: gds.Ptr(1),
+		})
+	}, time.Hour)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(engine.UserTaskReviewChannel, ent.UpdateIdentityLinkInput{
+			UserID:        gds.Ptr(1),
+			OperationType: gds.Ptr(identitylink.OperationTypePass),
+			Comments:      gds.Ptr("pass"),
+		})
+	}, time.Hour+time.Second)
+
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -156,10 +181,10 @@ func (ts *TestSuite) Test_ParallelGateway() {
 		},
 		Variables: bpmn.Mappings{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "parallel-gateway", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "parallel-gateway", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
 	a.Handlers.RegistryHandler("step1", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("step1", "vars", vars)
@@ -179,7 +204,7 @@ func (ts *TestSuite) Test_ParallelGateway() {
 			"step3": "step3",
 		}, nil
 	})
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -195,10 +220,10 @@ func (ts *TestSuite) Test_ExclusiveGateway() {
 			"price": 1.5,
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "exclusive-gateway", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "exclusive-gateway", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
-	a := engine.NewBPMN(wf.ProcDefKey, &ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
 	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("step1", "vars", vars)
@@ -210,7 +235,7 @@ func (ts *TestSuite) Test_ExclusiveGateway() {
 		assert.Fail(ts.T(), "should not be called")
 		return nil, nil
 	})
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -227,11 +252,12 @@ func (ts *TestSuite) Test_ServiceTaskInputOutput() {
 			"city":  "beijing",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "service-task-input-output", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "service-task-input-output",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
-	a := engine.NewBPMN(wf.ProcDefKey, &ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
 	a.Handlers.RegistryHandler("input-task-1", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("step1", "vars", vars)
@@ -239,7 +265,7 @@ func (ts *TestSuite) Test_ServiceTaskInputOutput() {
 			"step1": "step1",
 		}, nil
 	})
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -247,7 +273,6 @@ func (ts *TestSuite) Test_ServiceTaskInputOutput() {
 
 func (ts *TestSuite) Test_MessageTimer() {
 	env := ts.NewTestWorkflowEnvironment()
-
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
@@ -256,11 +281,12 @@ func (ts *TestSuite) Test_MessageTimer() {
 			"key": "chan1",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
-	a := engine.NewBPMN(wf.ProcDefKey, &ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
 	a.Handlers.RegistryHandler("ask", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("ask", "vars", vars)
@@ -277,7 +303,7 @@ func (ts *TestSuite) Test_MessageTimer() {
 	})
 	//env.OnActivity(a.ServiceTaskActivity, mock.Anything, mock.Anything).Return(engine.Mappings{}, nil)
 	//env.OnActivity(a.CreateUserTaskActivity(),mock.Anything, mock.Anything).Return(nil, nil)
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -286,7 +312,6 @@ func (ts *TestSuite) Test_MessageTimer() {
 
 func (ts *TestSuite) Test_MessageTimerWin() {
 	env := ts.NewTestWorkflowEnvironment()
-
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
@@ -295,11 +320,12 @@ func (ts *TestSuite) Test_MessageTimerWin() {
 			"key": "key",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 
 	SetInstanceRequestDef(&wf, pd)
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
 	a.Handlers.RegistryHandler("ask", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("ask", "vars", vars)
@@ -318,7 +344,7 @@ func (ts *TestSuite) Test_MessageTimerWin() {
 		env.SignalWorkflow("key", nil)
 	}, time.Second*2)
 
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -335,11 +361,12 @@ func (ts *TestSuite) Test_MessageLoop() {
 			"key": "key",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-loop", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-loop",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 	loop := 0
 	a.Handlers.RegistryHandler("do-nothing", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		loop++
@@ -376,46 +403,48 @@ func (ts *TestSuite) Test_MessageLoop() {
 			"hasReachedMaxAttempts":    false,
 		})
 	}, time.Second*3)
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
 }
 
+// TODO 目前由于子流程与主流程为同一个实例,在测试环境中,无法监控到子流程的执行,而导致测试失败
 func (ts *TestSuite) Test_CallActivity() {
 	env := ts.NewTestWorkflowEnvironment()
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
-			OrgID:     1,
+			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
 		Variables: bpmn.Mappings{
-			"assignee": "admin",
+			"assignee": "user1",
 			"price":    1,
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "call-activity", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "call-activity",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 
 	SetInstanceRequestDef(&wf, pd)
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
-			UserID: gds.Ptr(198640048702208),
+			UserID: gds.Ptr(1),
 		})
 	}, time.Hour)
 
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskReviewChannel, ent.UpdateIdentityLinkInput{
-			UserID:        gds.Ptr(198640048702208),
+			UserID:        gds.Ptr(1),
 			OperationType: gds.Ptr(identitylink.OperationTypePass),
 			Comments:      gds.Ptr("pass"),
 		})
 	}, time.Hour+time.Second)
 
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
 	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
 		activity.GetLogger(ctx).Info("step1", "vars", vars)
@@ -427,30 +456,32 @@ func (ts *TestSuite) Test_CallActivity() {
 		assert.Fail(ts.T(), "should not be called")
 		return nil, nil
 	})
-
-	env.RegisterActivity(a)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
 }
 
+// MultiUserTask is a multi candidate users task. User1 is not allow user.
 func (ts *TestSuite) Test_MultiUserTask() {
 	env := ts.NewTestWorkflowEnvironment()
 	wf := engine.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
-			OrgID:     1,
+			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
 		Variables: bpmn.Mappings{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "multi-user-task", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "multi-user-task",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
-			UserID: gds.Ptr(1),
+			UserID:   gds.Ptr(1),
+			TenantID: 1,
 		})
 	}, time.Hour)
 	env.RegisterDelayedCallback(func() {
@@ -462,19 +493,21 @@ func (ts *TestSuite) Test_MultiUserTask() {
 	}, time.Hour+time.Second)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
-			UserID: gds.Ptr(2),
+			UserID:   gds.Ptr(2),
+			TenantID: 1,
 		})
 	}, time.Hour)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskReviewChannel, ent.UpdateIdentityLinkInput{
-			UserID:        gds.Ptr(3),
+			UserID:        gds.Ptr(2),
 			OperationType: gds.Ptr(identitylink.OperationTypePass),
 			Comments:      gds.Ptr("pass"),
 		})
 	}, time.Hour+time.Second)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(engine.UserTaskClaimChannel, ent.CreateIdentityLinkInput{
-			UserID: gds.Ptr(3),
+			UserID:   gds.Ptr(3),
+			TenantID: 1,
 		})
 	}, time.Hour)
 	env.RegisterDelayedCallback(func() {
@@ -484,8 +517,8 @@ func (ts *TestSuite) Test_MultiUserTask() {
 			Comments:      gds.Ptr("pass"),
 		})
 	}, time.Hour+time.Second)
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
-	env.RegisterActivity(a)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())
@@ -497,7 +530,7 @@ func (ts *TestSuite) Test_BusinessRule() {
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
-			OrgID:     1,
+			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
 		Variables: bpmn.Mappings{
@@ -505,12 +538,13 @@ func (ts *TestSuite) Test_BusinessRule() {
 			"invoiceCategory": "Misc",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "business-rule", OrgID: wf.OrgID})
+	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "business-rule",
+		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
-	a := engine.NewBPMN(wf.ProcDefKey, ts.def)
-	env.RegisterActivity(a)
+	a := ts.newBPMN(wf.ProcDefKey, ts.def)
+	env.RegisterActivity(a.Activity)
 	env.ExecuteWorkflow(ts.def.BPMNWorkflowDef, wf)
 	ts.True(env.IsWorkflowCompleted())
 	ts.NoError(env.GetWorkflowError())

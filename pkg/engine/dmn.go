@@ -174,11 +174,15 @@ func aggregation(dt *dmn.DecisionTable, output []bpmn.Mappings) (bpmn.Mappings, 
 func cross(left, right []bpmn.Mappings) ([]bpmn.Mappings, error) {
 	output := make([]bpmn.Mappings, 0, len(left)*len(right))
 	for _, l := range left {
-		for _, r := range right {
-			for k, v := range r {
-				l[k] = v
+		for j, r := range right {
+			ll := make(bpmn.Mappings)
+			for k := range l {
+				ll[k] = l[k]
 			}
-			output = append(output, l)
+			for k := range r {
+				ll[k] = right[j][k]
+			}
+			output = append(output, ll)
 		}
 	}
 	return output, nil

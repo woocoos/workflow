@@ -15,6 +15,8 @@ import (
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procdef"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DeploymentUpdate is the builder for updating Deployment entities.
@@ -196,7 +198,7 @@ func (du *DeploymentUpdate) RemoveDecisionReqs(d ...*DecisionReqDef) *Deployment
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (du *DeploymentUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks[int, DeploymentMutation](ctx, du.sqlSave, du.mutation, du.hooks)
+	return withHooks(ctx, du.sqlSave, du.mutation, du.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -265,12 +267,10 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.ProcDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := du.mutation.RemovedProcDefsIDs(); len(nodes) > 0 && !du.mutation.ProcDefsCleared() {
@@ -281,12 +281,10 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -300,12 +298,10 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -319,12 +315,10 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.DecisionReqDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := du.mutation.RemovedDecisionReqsIDs(); len(nodes) > 0 && !du.mutation.DecisionReqsCleared() {
@@ -335,12 +329,10 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -354,17 +346,17 @@ func (du *DeploymentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = du.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = du.schemaConfig.Deployment
+	ctx = internal.NewSchemaConfigContext(ctx, du.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, du.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{deployment.Label}
@@ -564,7 +556,7 @@ func (duo *DeploymentUpdateOne) Select(field string, fields ...string) *Deployme
 
 // Save executes the query and returns the updated Deployment entity.
 func (duo *DeploymentUpdateOne) Save(ctx context.Context) (*Deployment, error) {
-	return withHooks[*Deployment, DeploymentMutation](ctx, duo.sqlSave, duo.mutation, duo.hooks)
+	return withHooks(ctx, duo.sqlSave, duo.mutation, duo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -650,12 +642,10 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.ProcDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := duo.mutation.RemovedProcDefsIDs(); len(nodes) > 0 && !duo.mutation.ProcDefsCleared() {
@@ -666,12 +656,10 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -685,12 +673,10 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -704,12 +690,10 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.DecisionReqDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := duo.mutation.RemovedDecisionReqsIDs(); len(nodes) > 0 && !duo.mutation.DecisionReqsCleared() {
@@ -720,12 +704,10 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -739,17 +721,17 @@ func (duo *DeploymentUpdateOne) sqlSave(ctx context.Context) (_node *Deployment,
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = duo.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = duo.schemaConfig.Deployment
+	ctx = internal.NewSchemaConfigContext(ctx, duo.schemaConfig)
 	_node = &Deployment{config: duo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

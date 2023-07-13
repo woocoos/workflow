@@ -11,9 +11,12 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/woocoos/entco/schemax/typex"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ProcDefUpdate is the builder for updating ProcDef entities.
@@ -196,69 +199,64 @@ func (pdu *ProcDefUpdate) ClearVersionTag() *ProcDefUpdate {
 	return pdu
 }
 
-// SetResourceName sets the "resource_name" field.
-func (pdu *ProcDefUpdate) SetResourceName(s string) *ProcDefUpdate {
-	pdu.mutation.SetResourceName(s)
+// SetResourceKey sets the "resource_key" field.
+func (pdu *ProcDefUpdate) SetResourceKey(s string) *ProcDefUpdate {
+	pdu.mutation.SetResourceKey(s)
 	return pdu
 }
 
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (pdu *ProcDefUpdate) SetNillableResourceName(s *string) *ProcDefUpdate {
+// SetNillableResourceKey sets the "resource_key" field if the given value is not nil.
+func (pdu *ProcDefUpdate) SetNillableResourceKey(s *string) *ProcDefUpdate {
 	if s != nil {
-		pdu.SetResourceName(*s)
+		pdu.SetResourceKey(*s)
 	}
 	return pdu
 }
 
-// ClearResourceName clears the value of the "resource_name" field.
-func (pdu *ProcDefUpdate) ClearResourceName() *ProcDefUpdate {
-	pdu.mutation.ClearResourceName()
+// ClearResourceKey clears the value of the "resource_key" field.
+func (pdu *ProcDefUpdate) ClearResourceKey() *ProcDefUpdate {
+	pdu.mutation.ClearResourceKey()
 	return pdu
 }
 
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (pdu *ProcDefUpdate) SetDgrmResourceName(s string) *ProcDefUpdate {
-	pdu.mutation.SetDgrmResourceName(s)
+// SetResourceID sets the "resource_id" field.
+func (pdu *ProcDefUpdate) SetResourceID(i int) *ProcDefUpdate {
+	pdu.mutation.ResetResourceID()
+	pdu.mutation.SetResourceID(i)
 	return pdu
 }
 
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (pdu *ProcDefUpdate) SetNillableDgrmResourceName(s *string) *ProcDefUpdate {
-	if s != nil {
-		pdu.SetDgrmResourceName(*s)
+// SetNillableResourceID sets the "resource_id" field if the given value is not nil.
+func (pdu *ProcDefUpdate) SetNillableResourceID(i *int) *ProcDefUpdate {
+	if i != nil {
+		pdu.SetResourceID(*i)
 	}
 	return pdu
 }
 
-// ClearDgrmResourceName clears the value of the "dgrm_resource_name" field.
-func (pdu *ProcDefUpdate) ClearDgrmResourceName() *ProcDefUpdate {
-	pdu.mutation.ClearDgrmResourceName()
+// AddResourceID adds i to the "resource_id" field.
+func (pdu *ProcDefUpdate) AddResourceID(i int) *ProcDefUpdate {
+	pdu.mutation.AddResourceID(i)
+	return pdu
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (pdu *ProcDefUpdate) ClearResourceID() *ProcDefUpdate {
+	pdu.mutation.ClearResourceID()
 	return pdu
 }
 
 // SetStatus sets the "status" field.
-func (pdu *ProcDefUpdate) SetStatus(pr procdef.Status) *ProcDefUpdate {
-	pdu.mutation.SetStatus(pr)
+func (pdu *ProcDefUpdate) SetStatus(ts typex.SimpleStatus) *ProcDefUpdate {
+	pdu.mutation.SetStatus(ts)
 	return pdu
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (pdu *ProcDefUpdate) SetNillableStatus(pr *procdef.Status) *ProcDefUpdate {
-	if pr != nil {
-		pdu.SetStatus(*pr)
+func (pdu *ProcDefUpdate) SetNillableStatus(ts *typex.SimpleStatus) *ProcDefUpdate {
+	if ts != nil {
+		pdu.SetStatus(*ts)
 	}
-	return pdu
-}
-
-// SetResourceData sets the "resource_data" field.
-func (pdu *ProcDefUpdate) SetResourceData(b []byte) *ProcDefUpdate {
-	pdu.mutation.SetResourceData(b)
-	return pdu
-}
-
-// ClearResourceData clears the value of the "resource_data" field.
-func (pdu *ProcDefUpdate) ClearResourceData() *ProcDefUpdate {
-	pdu.mutation.ClearResourceData()
 	return pdu
 }
 
@@ -305,7 +303,7 @@ func (pdu *ProcDefUpdate) RemoveProcInstances(p ...*ProcInst) *ProcDefUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (pdu *ProcDefUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks[int, ProcDefMutation](ctx, pdu.sqlSave, pdu.mutation, pdu.hooks)
+	return withHooks(ctx, pdu.sqlSave, pdu.mutation, pdu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -409,26 +407,23 @@ func (pdu *ProcDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if pdu.mutation.VersionTagCleared() {
 		_spec.ClearField(procdef.FieldVersionTag, field.TypeString)
 	}
-	if value, ok := pdu.mutation.ResourceName(); ok {
-		_spec.SetField(procdef.FieldResourceName, field.TypeString, value)
+	if value, ok := pdu.mutation.ResourceKey(); ok {
+		_spec.SetField(procdef.FieldResourceKey, field.TypeString, value)
 	}
-	if pdu.mutation.ResourceNameCleared() {
-		_spec.ClearField(procdef.FieldResourceName, field.TypeString)
+	if pdu.mutation.ResourceKeyCleared() {
+		_spec.ClearField(procdef.FieldResourceKey, field.TypeString)
 	}
-	if value, ok := pdu.mutation.DgrmResourceName(); ok {
-		_spec.SetField(procdef.FieldDgrmResourceName, field.TypeString, value)
+	if value, ok := pdu.mutation.ResourceID(); ok {
+		_spec.SetField(procdef.FieldResourceID, field.TypeInt, value)
 	}
-	if pdu.mutation.DgrmResourceNameCleared() {
-		_spec.ClearField(procdef.FieldDgrmResourceName, field.TypeString)
+	if value, ok := pdu.mutation.AddedResourceID(); ok {
+		_spec.AddField(procdef.FieldResourceID, field.TypeInt, value)
+	}
+	if pdu.mutation.ResourceIDCleared() {
+		_spec.ClearField(procdef.FieldResourceID, field.TypeInt)
 	}
 	if value, ok := pdu.mutation.Status(); ok {
 		_spec.SetField(procdef.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := pdu.mutation.ResourceData(); ok {
-		_spec.SetField(procdef.FieldResourceData, field.TypeBytes, value)
-	}
-	if pdu.mutation.ResourceDataCleared() {
-		_spec.ClearField(procdef.FieldResourceData, field.TypeBytes)
 	}
 	if pdu.mutation.ProcInstancesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -438,12 +433,10 @@ func (pdu *ProcDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pdu.schemaConfig.ProcInst
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := pdu.mutation.RemovedProcInstancesIDs(); len(nodes) > 0 && !pdu.mutation.ProcInstancesCleared() {
@@ -454,12 +447,10 @@ func (pdu *ProcDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pdu.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -473,17 +464,17 @@ func (pdu *ProcDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pdu.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = pdu.schemaConfig.ProcDef
+	ctx = internal.NewSchemaConfigContext(ctx, pdu.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, pdu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{procdef.Label}
@@ -671,69 +662,64 @@ func (pduo *ProcDefUpdateOne) ClearVersionTag() *ProcDefUpdateOne {
 	return pduo
 }
 
-// SetResourceName sets the "resource_name" field.
-func (pduo *ProcDefUpdateOne) SetResourceName(s string) *ProcDefUpdateOne {
-	pduo.mutation.SetResourceName(s)
+// SetResourceKey sets the "resource_key" field.
+func (pduo *ProcDefUpdateOne) SetResourceKey(s string) *ProcDefUpdateOne {
+	pduo.mutation.SetResourceKey(s)
 	return pduo
 }
 
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (pduo *ProcDefUpdateOne) SetNillableResourceName(s *string) *ProcDefUpdateOne {
+// SetNillableResourceKey sets the "resource_key" field if the given value is not nil.
+func (pduo *ProcDefUpdateOne) SetNillableResourceKey(s *string) *ProcDefUpdateOne {
 	if s != nil {
-		pduo.SetResourceName(*s)
+		pduo.SetResourceKey(*s)
 	}
 	return pduo
 }
 
-// ClearResourceName clears the value of the "resource_name" field.
-func (pduo *ProcDefUpdateOne) ClearResourceName() *ProcDefUpdateOne {
-	pduo.mutation.ClearResourceName()
+// ClearResourceKey clears the value of the "resource_key" field.
+func (pduo *ProcDefUpdateOne) ClearResourceKey() *ProcDefUpdateOne {
+	pduo.mutation.ClearResourceKey()
 	return pduo
 }
 
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (pduo *ProcDefUpdateOne) SetDgrmResourceName(s string) *ProcDefUpdateOne {
-	pduo.mutation.SetDgrmResourceName(s)
+// SetResourceID sets the "resource_id" field.
+func (pduo *ProcDefUpdateOne) SetResourceID(i int) *ProcDefUpdateOne {
+	pduo.mutation.ResetResourceID()
+	pduo.mutation.SetResourceID(i)
 	return pduo
 }
 
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (pduo *ProcDefUpdateOne) SetNillableDgrmResourceName(s *string) *ProcDefUpdateOne {
-	if s != nil {
-		pduo.SetDgrmResourceName(*s)
+// SetNillableResourceID sets the "resource_id" field if the given value is not nil.
+func (pduo *ProcDefUpdateOne) SetNillableResourceID(i *int) *ProcDefUpdateOne {
+	if i != nil {
+		pduo.SetResourceID(*i)
 	}
 	return pduo
 }
 
-// ClearDgrmResourceName clears the value of the "dgrm_resource_name" field.
-func (pduo *ProcDefUpdateOne) ClearDgrmResourceName() *ProcDefUpdateOne {
-	pduo.mutation.ClearDgrmResourceName()
+// AddResourceID adds i to the "resource_id" field.
+func (pduo *ProcDefUpdateOne) AddResourceID(i int) *ProcDefUpdateOne {
+	pduo.mutation.AddResourceID(i)
+	return pduo
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (pduo *ProcDefUpdateOne) ClearResourceID() *ProcDefUpdateOne {
+	pduo.mutation.ClearResourceID()
 	return pduo
 }
 
 // SetStatus sets the "status" field.
-func (pduo *ProcDefUpdateOne) SetStatus(pr procdef.Status) *ProcDefUpdateOne {
-	pduo.mutation.SetStatus(pr)
+func (pduo *ProcDefUpdateOne) SetStatus(ts typex.SimpleStatus) *ProcDefUpdateOne {
+	pduo.mutation.SetStatus(ts)
 	return pduo
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (pduo *ProcDefUpdateOne) SetNillableStatus(pr *procdef.Status) *ProcDefUpdateOne {
-	if pr != nil {
-		pduo.SetStatus(*pr)
+func (pduo *ProcDefUpdateOne) SetNillableStatus(ts *typex.SimpleStatus) *ProcDefUpdateOne {
+	if ts != nil {
+		pduo.SetStatus(*ts)
 	}
-	return pduo
-}
-
-// SetResourceData sets the "resource_data" field.
-func (pduo *ProcDefUpdateOne) SetResourceData(b []byte) *ProcDefUpdateOne {
-	pduo.mutation.SetResourceData(b)
-	return pduo
-}
-
-// ClearResourceData clears the value of the "resource_data" field.
-func (pduo *ProcDefUpdateOne) ClearResourceData() *ProcDefUpdateOne {
-	pduo.mutation.ClearResourceData()
 	return pduo
 }
 
@@ -793,7 +779,7 @@ func (pduo *ProcDefUpdateOne) Select(field string, fields ...string) *ProcDefUpd
 
 // Save executes the query and returns the updated ProcDef entity.
 func (pduo *ProcDefUpdateOne) Save(ctx context.Context) (*ProcDef, error) {
-	return withHooks[*ProcDef, ProcDefMutation](ctx, pduo.sqlSave, pduo.mutation, pduo.hooks)
+	return withHooks(ctx, pduo.sqlSave, pduo.mutation, pduo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -914,26 +900,23 @@ func (pduo *ProcDefUpdateOne) sqlSave(ctx context.Context) (_node *ProcDef, err 
 	if pduo.mutation.VersionTagCleared() {
 		_spec.ClearField(procdef.FieldVersionTag, field.TypeString)
 	}
-	if value, ok := pduo.mutation.ResourceName(); ok {
-		_spec.SetField(procdef.FieldResourceName, field.TypeString, value)
+	if value, ok := pduo.mutation.ResourceKey(); ok {
+		_spec.SetField(procdef.FieldResourceKey, field.TypeString, value)
 	}
-	if pduo.mutation.ResourceNameCleared() {
-		_spec.ClearField(procdef.FieldResourceName, field.TypeString)
+	if pduo.mutation.ResourceKeyCleared() {
+		_spec.ClearField(procdef.FieldResourceKey, field.TypeString)
 	}
-	if value, ok := pduo.mutation.DgrmResourceName(); ok {
-		_spec.SetField(procdef.FieldDgrmResourceName, field.TypeString, value)
+	if value, ok := pduo.mutation.ResourceID(); ok {
+		_spec.SetField(procdef.FieldResourceID, field.TypeInt, value)
 	}
-	if pduo.mutation.DgrmResourceNameCleared() {
-		_spec.ClearField(procdef.FieldDgrmResourceName, field.TypeString)
+	if value, ok := pduo.mutation.AddedResourceID(); ok {
+		_spec.AddField(procdef.FieldResourceID, field.TypeInt, value)
+	}
+	if pduo.mutation.ResourceIDCleared() {
+		_spec.ClearField(procdef.FieldResourceID, field.TypeInt)
 	}
 	if value, ok := pduo.mutation.Status(); ok {
 		_spec.SetField(procdef.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := pduo.mutation.ResourceData(); ok {
-		_spec.SetField(procdef.FieldResourceData, field.TypeBytes, value)
-	}
-	if pduo.mutation.ResourceDataCleared() {
-		_spec.ClearField(procdef.FieldResourceData, field.TypeBytes)
 	}
 	if pduo.mutation.ProcInstancesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -943,12 +926,10 @@ func (pduo *ProcDefUpdateOne) sqlSave(ctx context.Context) (_node *ProcDef, err 
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pduo.schemaConfig.ProcInst
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := pduo.mutation.RemovedProcInstancesIDs(); len(nodes) > 0 && !pduo.mutation.ProcInstancesCleared() {
@@ -959,12 +940,10 @@ func (pduo *ProcDefUpdateOne) sqlSave(ctx context.Context) (_node *ProcDef, err 
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pduo.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -978,17 +957,17 @@ func (pduo *ProcDefUpdateOne) sqlSave(ctx context.Context) (_node *ProcDef, err 
 			Columns: []string{procdef.ProcInstancesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pduo.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = pduo.schemaConfig.ProcDef
+	ctx = internal.NewSchemaConfigContext(ctx, pduo.schemaConfig)
 	_node = &ProcDef{config: pduo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

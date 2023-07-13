@@ -15,13 +15,15 @@ import (
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DecisionReqDefQuery is the builder for querying DecisionReqDef entities.
 type DecisionReqDefQuery struct {
 	config
 	ctx                   *QueryContext
-	order                 []OrderFunc
+	order                 []decisionreqdef.OrderOption
 	inters                []Interceptor
 	predicates            []predicate.DecisionReqDef
 	withDeployment        *DeploymentQuery
@@ -60,7 +62,7 @@ func (drdq *DecisionReqDefQuery) Unique(unique bool) *DecisionReqDefQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (drdq *DecisionReqDefQuery) Order(o ...OrderFunc) *DecisionReqDefQuery {
+func (drdq *DecisionReqDefQuery) Order(o ...decisionreqdef.OrderOption) *DecisionReqDefQuery {
 	drdq.order = append(drdq.order, o...)
 	return drdq
 }
@@ -81,6 +83,9 @@ func (drdq *DecisionReqDefQuery) QueryDeployment() *DeploymentQuery {
 			sqlgraph.To(deployment.Table, deployment.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, decisionreqdef.DeploymentTable, decisionreqdef.DeploymentColumn),
 		)
+		schemaConfig := drdq.schemaConfig
+		step.To.Schema = schemaConfig.Deployment
+		step.Edge.Schema = schemaConfig.DecisionReqDef
 		fromU = sqlgraph.SetNeighbors(drdq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -103,6 +108,9 @@ func (drdq *DecisionReqDefQuery) QueryDecisionDefs() *DecisionDefQuery {
 			sqlgraph.To(decisiondef.Table, decisiondef.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, decisionreqdef.DecisionDefsTable, decisionreqdef.DecisionDefsColumn),
 		)
+		schemaConfig := drdq.schemaConfig
+		step.To.Schema = schemaConfig.DecisionDef
+		step.Edge.Schema = schemaConfig.DecisionDef
 		fromU = sqlgraph.SetNeighbors(drdq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -298,7 +306,7 @@ func (drdq *DecisionReqDefQuery) Clone() *DecisionReqDefQuery {
 	return &DecisionReqDefQuery{
 		config:           drdq.config,
 		ctx:              drdq.ctx.Clone(),
-		order:            append([]OrderFunc{}, drdq.order...),
+		order:            append([]decisionreqdef.OrderOption{}, drdq.order...),
 		inters:           append([]Interceptor{}, drdq.inters...),
 		predicates:       append([]predicate.DecisionReqDef{}, drdq.predicates...),
 		withDeployment:   drdq.withDeployment.Clone(),
@@ -423,6 +431,8 @@ func (drdq *DecisionReqDefQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = drdq.schemaConfig.DecisionReqDef
+	ctx = internal.NewSchemaConfigContext(ctx, drdq.schemaConfig)
 	if len(drdq.modifiers) > 0 {
 		_spec.Modifiers = drdq.modifiers
 	}
@@ -502,8 +512,11 @@ func (drdq *DecisionReqDefQuery) loadDecisionDefs(ctx context.Context, query *De
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(decisiondef.FieldReqDefID)
+	}
 	query.Where(predicate.DecisionDef(func(s *sql.Selector) {
-		s.Where(sql.InValues(decisionreqdef.DecisionDefsColumn, fks...))
+		s.Where(sql.InValues(s.C(decisionreqdef.DecisionDefsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -513,7 +526,7 @@ func (drdq *DecisionReqDefQuery) loadDecisionDefs(ctx context.Context, query *De
 		fk := n.ReqDefID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "req_def_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "req_def_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -522,6 +535,8 @@ func (drdq *DecisionReqDefQuery) loadDecisionDefs(ctx context.Context, query *De
 
 func (drdq *DecisionReqDefQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := drdq.querySpec()
+	_spec.Node.Schema = drdq.schemaConfig.DecisionReqDef
+	ctx = internal.NewSchemaConfigContext(ctx, drdq.schemaConfig)
 	if len(drdq.modifiers) > 0 {
 		_spec.Modifiers = drdq.modifiers
 	}
@@ -547,6 +562,9 @@ func (drdq *DecisionReqDefQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != decisionreqdef.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if drdq.withDeployment != nil {
+			_spec.Node.AddColumnOnce(decisionreqdef.FieldDeploymentID)
 		}
 	}
 	if ps := drdq.predicates; len(ps) > 0 {
@@ -587,6 +605,9 @@ func (drdq *DecisionReqDefQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if drdq.ctx.Unique != nil && *drdq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(drdq.schemaConfig.DecisionReqDef)
+	ctx = internal.NewSchemaConfigContext(ctx, drdq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range drdq.predicates {
 		p(selector)
 	}

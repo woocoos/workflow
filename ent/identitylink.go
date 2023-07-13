@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/task"
@@ -16,6 +17,8 @@ type IdentityLink struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 流程实例ID
 	TaskID int `json:"task_id,omitempty"`
 	// 流程定义ID
@@ -28,15 +31,14 @@ type IdentityLink struct {
 	AssignerID int `json:"assigner_id,omitempty"`
 	// 分配,候选,参与,上级,抄送
 	LinkType identitylink.LinkType `json:"link_type,omitempty"`
-	// 组织ID
-	OrgID int `json:"org_id,omitempty"`
-	// 操作类型
+	// 初始化,认领,删除,通过,驳回
 	OperationType identitylink.OperationType `json:"operation_type,omitempty"`
 	// 评论
 	Comments string `json:"comments,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the IdentityLinkQuery when eager-loading is set.
-	Edges IdentityLinkEdges `json:"edges"`
+	Edges        IdentityLinkEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // IdentityLinkEdges holds the relations/edges for other nodes in the graph.
@@ -68,12 +70,12 @@ func (*IdentityLink) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case identitylink.FieldID, identitylink.FieldTaskID, identitylink.FieldProcDefID, identitylink.FieldGroupID, identitylink.FieldUserID, identitylink.FieldAssignerID, identitylink.FieldOrgID:
+		case identitylink.FieldID, identitylink.FieldTenantID, identitylink.FieldTaskID, identitylink.FieldProcDefID, identitylink.FieldGroupID, identitylink.FieldUserID, identitylink.FieldAssignerID:
 			values[i] = new(sql.NullInt64)
 		case identitylink.FieldLinkType, identitylink.FieldOperationType, identitylink.FieldComments:
 			values[i] = new(sql.NullString)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type IdentityLink", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -93,6 +95,12 @@ func (il *IdentityLink) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			il.ID = int(value.Int64)
+		case identitylink.FieldTenantID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value.Valid {
+				il.TenantID = int(value.Int64)
+			}
 		case identitylink.FieldTaskID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field task_id", values[i])
@@ -129,12 +137,6 @@ func (il *IdentityLink) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				il.LinkType = identitylink.LinkType(value.String)
 			}
-		case identitylink.FieldOrgID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
-			} else if value.Valid {
-				il.OrgID = int(value.Int64)
-			}
 		case identitylink.FieldOperationType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field operation_type", values[i])
@@ -147,9 +149,17 @@ func (il *IdentityLink) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				il.Comments = value.String
 			}
+		default:
+			il.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the IdentityLink.
+// This includes values selected through modifiers, order, etc.
+func (il *IdentityLink) Value(name string) (ent.Value, error) {
+	return il.selectValues.Get(name)
 }
 
 // QueryTask queries the "task" edge of the IdentityLink entity.
@@ -180,6 +190,9 @@ func (il *IdentityLink) String() string {
 	var builder strings.Builder
 	builder.WriteString("IdentityLink(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", il.ID))
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", il.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("task_id=")
 	builder.WriteString(fmt.Sprintf("%v", il.TaskID))
 	builder.WriteString(", ")
@@ -197,9 +210,6 @@ func (il *IdentityLink) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("link_type=")
 	builder.WriteString(fmt.Sprintf("%v", il.LinkType))
-	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", il.OrgID))
 	builder.WriteString(", ")
 	builder.WriteString("operation_type=")
 	builder.WriteString(fmt.Sprintf("%v", il.OperationType))

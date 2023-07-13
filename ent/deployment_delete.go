@@ -8,8 +8,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/deployment"
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DeploymentDelete is the builder for deleting a Deployment entity.
@@ -27,7 +29,7 @@ func (dd *DeploymentDelete) Where(ps ...predicate.Deployment) *DeploymentDelete 
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (dd *DeploymentDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks[int, DeploymentMutation](ctx, dd.sqlExec, dd.mutation, dd.hooks)
+	return withHooks(ctx, dd.sqlExec, dd.mutation, dd.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -41,6 +43,8 @@ func (dd *DeploymentDelete) ExecX(ctx context.Context) int {
 
 func (dd *DeploymentDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(deployment.Table, sqlgraph.NewFieldSpec(deployment.FieldID, field.TypeInt))
+	_spec.Node.Schema = dd.schemaConfig.Deployment
+	ctx = internal.NewSchemaConfigContext(ctx, dd.schemaConfig)
 	if ps := dd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

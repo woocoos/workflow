@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/identitylink"
@@ -18,6 +19,13 @@ type IdentityLinkCreate struct {
 	config
 	mutation *IdentityLinkMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
+}
+
+// SetTenantID sets the "tenant_id" field.
+func (ilc *IdentityLinkCreate) SetTenantID(i int) *IdentityLinkCreate {
+	ilc.mutation.SetTenantID(i)
+	return ilc
 }
 
 // SetTaskID sets the "task_id" field.
@@ -80,12 +88,6 @@ func (ilc *IdentityLinkCreate) SetLinkType(it identitylink.LinkType) *IdentityLi
 	return ilc
 }
 
-// SetOrgID sets the "org_id" field.
-func (ilc *IdentityLinkCreate) SetOrgID(i int) *IdentityLinkCreate {
-	ilc.mutation.SetOrgID(i)
-	return ilc
-}
-
 // SetOperationType sets the "operation_type" field.
 func (ilc *IdentityLinkCreate) SetOperationType(it identitylink.OperationType) *IdentityLinkCreate {
 	ilc.mutation.SetOperationType(it)
@@ -132,8 +134,10 @@ func (ilc *IdentityLinkCreate) Mutation() *IdentityLinkMutation {
 
 // Save creates the IdentityLink in the database.
 func (ilc *IdentityLinkCreate) Save(ctx context.Context) (*IdentityLink, error) {
-	ilc.defaults()
-	return withHooks[*IdentityLink, IdentityLinkMutation](ctx, ilc.sqlSave, ilc.mutation, ilc.hooks)
+	if err := ilc.defaults(); err != nil {
+		return nil, err
+	}
+	return withHooks(ctx, ilc.sqlSave, ilc.mutation, ilc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -159,15 +163,22 @@ func (ilc *IdentityLinkCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (ilc *IdentityLinkCreate) defaults() {
+func (ilc *IdentityLinkCreate) defaults() error {
 	if _, ok := ilc.mutation.ID(); !ok {
+		if identitylink.DefaultID == nil {
+			return fmt.Errorf("ent: uninitialized identitylink.DefaultID (forgotten import ent/runtime?)")
+		}
 		v := identitylink.DefaultID()
 		ilc.mutation.SetID(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (ilc *IdentityLinkCreate) check() error {
+	if _, ok := ilc.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "IdentityLink.tenant_id"`)}
+	}
 	if _, ok := ilc.mutation.TaskID(); !ok {
 		return &ValidationError{Name: "task_id", err: errors.New(`ent: missing required field "IdentityLink.task_id"`)}
 	}
@@ -181,9 +192,6 @@ func (ilc *IdentityLinkCreate) check() error {
 		if err := identitylink.LinkTypeValidator(v); err != nil {
 			return &ValidationError{Name: "link_type", err: fmt.Errorf(`ent: validator failed for field "IdentityLink.link_type": %w`, err)}
 		}
-	}
-	if _, ok := ilc.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "IdentityLink.org_id"`)}
 	}
 	if _, ok := ilc.mutation.OperationType(); !ok {
 		return &ValidationError{Name: "operation_type", err: errors.New(`ent: missing required field "IdentityLink.operation_type"`)}
@@ -224,9 +232,15 @@ func (ilc *IdentityLinkCreate) createSpec() (*IdentityLink, *sqlgraph.CreateSpec
 		_node = &IdentityLink{config: ilc.config}
 		_spec = sqlgraph.NewCreateSpec(identitylink.Table, sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt))
 	)
+	_spec.Schema = ilc.schemaConfig.IdentityLink
+	_spec.OnConflict = ilc.conflict
 	if id, ok := ilc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
+	}
+	if value, ok := ilc.mutation.TenantID(); ok {
+		_spec.SetField(identitylink.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := ilc.mutation.ProcDefID(); ok {
 		_spec.SetField(identitylink.FieldProcDefID, field.TypeInt, value)
@@ -248,10 +262,6 @@ func (ilc *IdentityLinkCreate) createSpec() (*IdentityLink, *sqlgraph.CreateSpec
 		_spec.SetField(identitylink.FieldLinkType, field.TypeEnum, value)
 		_node.LinkType = value
 	}
-	if value, ok := ilc.mutation.OrgID(); ok {
-		_spec.SetField(identitylink.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
-	}
 	if value, ok := ilc.mutation.OperationType(); ok {
 		_spec.SetField(identitylink.FieldOperationType, field.TypeEnum, value)
 		_node.OperationType = value
@@ -268,12 +278,10 @@ func (ilc *IdentityLinkCreate) createSpec() (*IdentityLink, *sqlgraph.CreateSpec
 			Columns: []string{identitylink.TaskColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = ilc.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -283,10 +291,420 @@ func (ilc *IdentityLinkCreate) createSpec() (*IdentityLink, *sqlgraph.CreateSpec
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.IdentityLink.Create().
+//		SetTenantID(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.IdentityLinkUpsert) {
+//			SetTenantID(v+v).
+//		}).
+//		Exec(ctx)
+func (ilc *IdentityLinkCreate) OnConflict(opts ...sql.ConflictOption) *IdentityLinkUpsertOne {
+	ilc.conflict = opts
+	return &IdentityLinkUpsertOne{
+		create: ilc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (ilc *IdentityLinkCreate) OnConflictColumns(columns ...string) *IdentityLinkUpsertOne {
+	ilc.conflict = append(ilc.conflict, sql.ConflictColumns(columns...))
+	return &IdentityLinkUpsertOne{
+		create: ilc,
+	}
+}
+
+type (
+	// IdentityLinkUpsertOne is the builder for "upsert"-ing
+	//  one IdentityLink node.
+	IdentityLinkUpsertOne struct {
+		create *IdentityLinkCreate
+	}
+
+	// IdentityLinkUpsert is the "OnConflict" setter.
+	IdentityLinkUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetTaskID sets the "task_id" field.
+func (u *IdentityLinkUpsert) SetTaskID(v int) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldTaskID, v)
+	return u
+}
+
+// UpdateTaskID sets the "task_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateTaskID() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldTaskID)
+	return u
+}
+
+// SetGroupID sets the "group_id" field.
+func (u *IdentityLinkUpsert) SetGroupID(v int) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldGroupID, v)
+	return u
+}
+
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateGroupID() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldGroupID)
+	return u
+}
+
+// AddGroupID adds v to the "group_id" field.
+func (u *IdentityLinkUpsert) AddGroupID(v int) *IdentityLinkUpsert {
+	u.Add(identitylink.FieldGroupID, v)
+	return u
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (u *IdentityLinkUpsert) ClearGroupID() *IdentityLinkUpsert {
+	u.SetNull(identitylink.FieldGroupID)
+	return u
+}
+
+// SetUserID sets the "user_id" field.
+func (u *IdentityLinkUpsert) SetUserID(v int) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldUserID, v)
+	return u
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateUserID() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldUserID)
+	return u
+}
+
+// AddUserID adds v to the "user_id" field.
+func (u *IdentityLinkUpsert) AddUserID(v int) *IdentityLinkUpsert {
+	u.Add(identitylink.FieldUserID, v)
+	return u
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (u *IdentityLinkUpsert) ClearUserID() *IdentityLinkUpsert {
+	u.SetNull(identitylink.FieldUserID)
+	return u
+}
+
+// SetAssignerID sets the "assigner_id" field.
+func (u *IdentityLinkUpsert) SetAssignerID(v int) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldAssignerID, v)
+	return u
+}
+
+// UpdateAssignerID sets the "assigner_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateAssignerID() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldAssignerID)
+	return u
+}
+
+// AddAssignerID adds v to the "assigner_id" field.
+func (u *IdentityLinkUpsert) AddAssignerID(v int) *IdentityLinkUpsert {
+	u.Add(identitylink.FieldAssignerID, v)
+	return u
+}
+
+// ClearAssignerID clears the value of the "assigner_id" field.
+func (u *IdentityLinkUpsert) ClearAssignerID() *IdentityLinkUpsert {
+	u.SetNull(identitylink.FieldAssignerID)
+	return u
+}
+
+// SetLinkType sets the "link_type" field.
+func (u *IdentityLinkUpsert) SetLinkType(v identitylink.LinkType) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldLinkType, v)
+	return u
+}
+
+// UpdateLinkType sets the "link_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateLinkType() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldLinkType)
+	return u
+}
+
+// SetOperationType sets the "operation_type" field.
+func (u *IdentityLinkUpsert) SetOperationType(v identitylink.OperationType) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldOperationType, v)
+	return u
+}
+
+// UpdateOperationType sets the "operation_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateOperationType() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldOperationType)
+	return u
+}
+
+// SetComments sets the "comments" field.
+func (u *IdentityLinkUpsert) SetComments(v string) *IdentityLinkUpsert {
+	u.Set(identitylink.FieldComments, v)
+	return u
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *IdentityLinkUpsert) UpdateComments() *IdentityLinkUpsert {
+	u.SetExcluded(identitylink.FieldComments)
+	return u
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *IdentityLinkUpsert) ClearComments() *IdentityLinkUpsert {
+	u.SetNull(identitylink.FieldComments)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(identitylink.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *IdentityLinkUpsertOne) UpdateNewValues() *IdentityLinkUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(identitylink.FieldID)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(identitylink.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.ProcDefID(); exists {
+			s.SetIgnore(identitylink.FieldProcDefID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *IdentityLinkUpsertOne) Ignore() *IdentityLinkUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *IdentityLinkUpsertOne) DoNothing() *IdentityLinkUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the IdentityLinkCreate.OnConflict
+// documentation for more info.
+func (u *IdentityLinkUpsertOne) Update(set func(*IdentityLinkUpsert)) *IdentityLinkUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&IdentityLinkUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTaskID sets the "task_id" field.
+func (u *IdentityLinkUpsertOne) SetTaskID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetTaskID(v)
+	})
+}
+
+// UpdateTaskID sets the "task_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateTaskID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateTaskID()
+	})
+}
+
+// SetGroupID sets the "group_id" field.
+func (u *IdentityLinkUpsertOne) SetGroupID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetGroupID(v)
+	})
+}
+
+// AddGroupID adds v to the "group_id" field.
+func (u *IdentityLinkUpsertOne) AddGroupID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddGroupID(v)
+	})
+}
+
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateGroupID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateGroupID()
+	})
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (u *IdentityLinkUpsertOne) ClearGroupID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearGroupID()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *IdentityLinkUpsertOne) SetUserID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// AddUserID adds v to the "user_id" field.
+func (u *IdentityLinkUpsertOne) AddUserID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateUserID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateUserID()
+	})
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (u *IdentityLinkUpsertOne) ClearUserID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearUserID()
+	})
+}
+
+// SetAssignerID sets the "assigner_id" field.
+func (u *IdentityLinkUpsertOne) SetAssignerID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetAssignerID(v)
+	})
+}
+
+// AddAssignerID adds v to the "assigner_id" field.
+func (u *IdentityLinkUpsertOne) AddAssignerID(v int) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddAssignerID(v)
+	})
+}
+
+// UpdateAssignerID sets the "assigner_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateAssignerID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateAssignerID()
+	})
+}
+
+// ClearAssignerID clears the value of the "assigner_id" field.
+func (u *IdentityLinkUpsertOne) ClearAssignerID() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearAssignerID()
+	})
+}
+
+// SetLinkType sets the "link_type" field.
+func (u *IdentityLinkUpsertOne) SetLinkType(v identitylink.LinkType) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetLinkType(v)
+	})
+}
+
+// UpdateLinkType sets the "link_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateLinkType() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateLinkType()
+	})
+}
+
+// SetOperationType sets the "operation_type" field.
+func (u *IdentityLinkUpsertOne) SetOperationType(v identitylink.OperationType) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetOperationType(v)
+	})
+}
+
+// UpdateOperationType sets the "operation_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateOperationType() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateOperationType()
+	})
+}
+
+// SetComments sets the "comments" field.
+func (u *IdentityLinkUpsertOne) SetComments(v string) *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetComments(v)
+	})
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *IdentityLinkUpsertOne) UpdateComments() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateComments()
+	})
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *IdentityLinkUpsertOne) ClearComments() *IdentityLinkUpsertOne {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearComments()
+	})
+}
+
+// Exec executes the query.
+func (u *IdentityLinkUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for IdentityLinkCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *IdentityLinkUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *IdentityLinkUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *IdentityLinkUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // IdentityLinkCreateBulk is the builder for creating many IdentityLink entities in bulk.
 type IdentityLinkCreateBulk struct {
 	config
 	builders []*IdentityLinkCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the IdentityLink entities in the database.
@@ -307,12 +725,13 @@ func (ilcb *IdentityLinkCreateBulk) Save(ctx context.Context) ([]*IdentityLink, 
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, ilcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = ilcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, ilcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -363,6 +782,270 @@ func (ilcb *IdentityLinkCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (ilcb *IdentityLinkCreateBulk) ExecX(ctx context.Context) {
 	if err := ilcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.IdentityLink.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.IdentityLinkUpsert) {
+//			SetTenantID(v+v).
+//		}).
+//		Exec(ctx)
+func (ilcb *IdentityLinkCreateBulk) OnConflict(opts ...sql.ConflictOption) *IdentityLinkUpsertBulk {
+	ilcb.conflict = opts
+	return &IdentityLinkUpsertBulk{
+		create: ilcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (ilcb *IdentityLinkCreateBulk) OnConflictColumns(columns ...string) *IdentityLinkUpsertBulk {
+	ilcb.conflict = append(ilcb.conflict, sql.ConflictColumns(columns...))
+	return &IdentityLinkUpsertBulk{
+		create: ilcb,
+	}
+}
+
+// IdentityLinkUpsertBulk is the builder for "upsert"-ing
+// a bulk of IdentityLink nodes.
+type IdentityLinkUpsertBulk struct {
+	create *IdentityLinkCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(identitylink.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *IdentityLinkUpsertBulk) UpdateNewValues() *IdentityLinkUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(identitylink.FieldID)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(identitylink.FieldTenantID)
+			}
+			if _, exists := b.mutation.ProcDefID(); exists {
+				s.SetIgnore(identitylink.FieldProcDefID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.IdentityLink.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *IdentityLinkUpsertBulk) Ignore() *IdentityLinkUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *IdentityLinkUpsertBulk) DoNothing() *IdentityLinkUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the IdentityLinkCreateBulk.OnConflict
+// documentation for more info.
+func (u *IdentityLinkUpsertBulk) Update(set func(*IdentityLinkUpsert)) *IdentityLinkUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&IdentityLinkUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTaskID sets the "task_id" field.
+func (u *IdentityLinkUpsertBulk) SetTaskID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetTaskID(v)
+	})
+}
+
+// UpdateTaskID sets the "task_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateTaskID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateTaskID()
+	})
+}
+
+// SetGroupID sets the "group_id" field.
+func (u *IdentityLinkUpsertBulk) SetGroupID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetGroupID(v)
+	})
+}
+
+// AddGroupID adds v to the "group_id" field.
+func (u *IdentityLinkUpsertBulk) AddGroupID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddGroupID(v)
+	})
+}
+
+// UpdateGroupID sets the "group_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateGroupID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateGroupID()
+	})
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (u *IdentityLinkUpsertBulk) ClearGroupID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearGroupID()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *IdentityLinkUpsertBulk) SetUserID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// AddUserID adds v to the "user_id" field.
+func (u *IdentityLinkUpsertBulk) AddUserID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateUserID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateUserID()
+	})
+}
+
+// ClearUserID clears the value of the "user_id" field.
+func (u *IdentityLinkUpsertBulk) ClearUserID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearUserID()
+	})
+}
+
+// SetAssignerID sets the "assigner_id" field.
+func (u *IdentityLinkUpsertBulk) SetAssignerID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetAssignerID(v)
+	})
+}
+
+// AddAssignerID adds v to the "assigner_id" field.
+func (u *IdentityLinkUpsertBulk) AddAssignerID(v int) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.AddAssignerID(v)
+	})
+}
+
+// UpdateAssignerID sets the "assigner_id" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateAssignerID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateAssignerID()
+	})
+}
+
+// ClearAssignerID clears the value of the "assigner_id" field.
+func (u *IdentityLinkUpsertBulk) ClearAssignerID() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearAssignerID()
+	})
+}
+
+// SetLinkType sets the "link_type" field.
+func (u *IdentityLinkUpsertBulk) SetLinkType(v identitylink.LinkType) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetLinkType(v)
+	})
+}
+
+// UpdateLinkType sets the "link_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateLinkType() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateLinkType()
+	})
+}
+
+// SetOperationType sets the "operation_type" field.
+func (u *IdentityLinkUpsertBulk) SetOperationType(v identitylink.OperationType) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetOperationType(v)
+	})
+}
+
+// UpdateOperationType sets the "operation_type" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateOperationType() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateOperationType()
+	})
+}
+
+// SetComments sets the "comments" field.
+func (u *IdentityLinkUpsertBulk) SetComments(v string) *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.SetComments(v)
+	})
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *IdentityLinkUpsertBulk) UpdateComments() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.UpdateComments()
+	})
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *IdentityLinkUpsertBulk) ClearComments() *IdentityLinkUpsertBulk {
+	return u.Update(func(s *IdentityLinkUpsert) {
+		s.ClearComments()
+	})
+}
+
+// Exec executes the query.
+func (u *IdentityLinkUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the IdentityLinkCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for IdentityLinkCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *IdentityLinkUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

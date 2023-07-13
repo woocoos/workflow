@@ -13,13 +13,15 @@ import (
 	"github.com/woocoos/workflow/ent/decisiondef"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DecisionDefQuery is the builder for querying DecisionDef entities.
 type DecisionDefQuery struct {
 	config
 	ctx        *QueryContext
-	order      []OrderFunc
+	order      []decisiondef.OrderOption
 	inters     []Interceptor
 	predicates []predicate.DecisionDef
 	withReqDef *DecisionReqDefQuery
@@ -56,7 +58,7 @@ func (ddq *DecisionDefQuery) Unique(unique bool) *DecisionDefQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (ddq *DecisionDefQuery) Order(o ...OrderFunc) *DecisionDefQuery {
+func (ddq *DecisionDefQuery) Order(o ...decisiondef.OrderOption) *DecisionDefQuery {
 	ddq.order = append(ddq.order, o...)
 	return ddq
 }
@@ -77,6 +79,9 @@ func (ddq *DecisionDefQuery) QueryReqDef() *DecisionReqDefQuery {
 			sqlgraph.To(decisionreqdef.Table, decisionreqdef.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, decisiondef.ReqDefTable, decisiondef.ReqDefColumn),
 		)
+		schemaConfig := ddq.schemaConfig
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionDef
 		fromU = sqlgraph.SetNeighbors(ddq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -272,7 +277,7 @@ func (ddq *DecisionDefQuery) Clone() *DecisionDefQuery {
 	return &DecisionDefQuery{
 		config:     ddq.config,
 		ctx:        ddq.ctx.Clone(),
-		order:      append([]OrderFunc{}, ddq.order...),
+		order:      append([]decisiondef.OrderOption{}, ddq.order...),
 		inters:     append([]Interceptor{}, ddq.inters...),
 		predicates: append([]predicate.DecisionDef{}, ddq.predicates...),
 		withReqDef: ddq.withReqDef.Clone(),
@@ -384,6 +389,8 @@ func (ddq *DecisionDefQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = ddq.schemaConfig.DecisionDef
+	ctx = internal.NewSchemaConfigContext(ctx, ddq.schemaConfig)
 	if len(ddq.modifiers) > 0 {
 		_spec.Modifiers = ddq.modifiers
 	}
@@ -442,6 +449,8 @@ func (ddq *DecisionDefQuery) loadReqDef(ctx context.Context, query *DecisionReqD
 
 func (ddq *DecisionDefQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := ddq.querySpec()
+	_spec.Node.Schema = ddq.schemaConfig.DecisionDef
+	ctx = internal.NewSchemaConfigContext(ctx, ddq.schemaConfig)
 	if len(ddq.modifiers) > 0 {
 		_spec.Modifiers = ddq.modifiers
 	}
@@ -467,6 +476,9 @@ func (ddq *DecisionDefQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != decisiondef.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if ddq.withReqDef != nil {
+			_spec.Node.AddColumnOnce(decisiondef.FieldReqDefID)
 		}
 	}
 	if ps := ddq.predicates; len(ps) > 0 {
@@ -507,6 +519,9 @@ func (ddq *DecisionDefQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if ddq.ctx.Unique != nil && *ddq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(ddq.schemaConfig.DecisionDef)
+	ctx = internal.NewSchemaConfigContext(ctx, ddq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range ddq.predicates {
 		p(selector)
 	}

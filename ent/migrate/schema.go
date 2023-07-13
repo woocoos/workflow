@@ -16,8 +16,8 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeInt, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "deployment_id", Type: field.TypeInt},
-		{Name: "org_id", Type: field.TypeInt},
 		{Name: "app_id", Type: field.TypeInt},
 		{Name: "category", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString, Nullable: true},
@@ -26,8 +26,6 @@ var (
 		{Name: "version", Type: field.TypeInt32},
 		{Name: "revision", Type: field.TypeInt32, Nullable: true},
 		{Name: "version_tag", Type: field.TypeString, Nullable: true},
-		{Name: "resource_name", Type: field.TypeString, Nullable: true},
-		{Name: "dgrm_resource_name", Type: field.TypeString, Nullable: true},
 		{Name: "req_def_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
 	}
 	// ActDecisionDefTable holds the schema information for the "act_decision_def" table.
@@ -38,7 +36,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "act_decision_def_act_decision_req_def_decision_defs",
-				Columns:    []*schema.Column{ActDecisionDefColumns[17]},
+				Columns:    []*schema.Column{ActDecisionDefColumns[15]},
 				RefColumns: []*schema.Column{ActDecisionReqDefColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -51,16 +49,15 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeInt, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "org_id", Type: field.TypeInt},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "app_id", Type: field.TypeInt},
 		{Name: "category", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString, Nullable: true},
 		{Name: "key", Type: field.TypeString},
 		{Name: "version", Type: field.TypeInt32},
 		{Name: "revision", Type: field.TypeInt32, Nullable: true},
-		{Name: "resource_name", Type: field.TypeString, Nullable: true},
-		{Name: "dgrm_resource_name", Type: field.TypeString, Nullable: true},
-		{Name: "resource_data", Type: field.TypeBytes, Nullable: true},
+		{Name: "resource_key", Type: field.TypeString, Nullable: true},
+		{Name: "resource_id", Type: field.TypeInt, Nullable: true},
 		{Name: "deployment_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
 	}
 	// ActDecisionReqDefTable holds the schema information for the "act_decision_req_def" table.
@@ -71,7 +68,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "act_decision_req_def_act_deployment_decision_reqs",
-				Columns:    []*schema.Column{ActDecisionReqDefColumns[15]},
+				Columns:    []*schema.Column{ActDecisionReqDefColumns[14]},
 				RefColumns: []*schema.Column{ActDeploymentColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -84,7 +81,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeInt, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "org_id", Type: field.TypeInt},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "app_id", Type: field.TypeInt},
 		{Name: "name", Type: field.TypeString, Nullable: true},
 		{Name: "source", Type: field.TypeString, Nullable: true},
@@ -99,13 +96,13 @@ var (
 	// ActIdentityLinkColumns holds the columns for the "act_identity_link" table.
 	ActIdentityLinkColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "proc_def_id", Type: field.TypeInt},
 		{Name: "group_id", Type: field.TypeInt, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt, Nullable: true},
 		{Name: "assigner_id", Type: field.TypeInt, Nullable: true},
 		{Name: "link_type", Type: field.TypeEnum, Enums: []string{"assignee", "candidate", "participant", "manager", "notifier"}},
-		{Name: "org_id", Type: field.TypeInt},
-		{Name: "operation_type", Type: field.TypeEnum, Enums: []string{"add", "delete", "pass", "reject"}},
+		{Name: "operation_type", Type: field.TypeEnum, Enums: []string{"init", "claim", "delete", "pass", "reject"}},
 		{Name: "comments", Type: field.TypeString, Nullable: true},
 		{Name: "task_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
 	}
@@ -123,6 +120,80 @@ var (
 			},
 		},
 	}
+	// OrgAppColumns holds the columns for the "org_app" table.
+	OrgAppColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int"}},
+		{Name: "org_id", Type: field.TypeInt},
+		{Name: "app_id", Type: field.TypeInt},
+	}
+	// OrgAppTable holds the schema information for the "org_app" table.
+	OrgAppTable = &schema.Table{
+		Name:       "org_app",
+		Columns:    OrgAppColumns,
+		PrimaryKey: []*schema.Column{OrgAppColumns[0]},
+	}
+	// OrgRoleColumns holds the columns for the "org_role" table.
+	OrgRoleColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int"}},
+		{Name: "org_id", Type: field.TypeInt, Nullable: true},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"group", "role"}},
+		{Name: "name", Type: field.TypeString},
+	}
+	// OrgRoleTable holds the schema information for the "org_role" table.
+	OrgRoleTable = &schema.Table{
+		Name:       "org_role",
+		Columns:    OrgRoleColumns,
+		PrimaryKey: []*schema.Column{OrgRoleColumns[0]},
+	}
+	// OrgRoleUserColumns holds the columns for the "org_role_user" table.
+	OrgRoleUserColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int"}},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "org_id", Type: field.TypeInt},
+		{Name: "org_role_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
+		{Name: "org_user_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
+	}
+	// OrgRoleUserTable holds the schema information for the "org_role_user" table.
+	OrgRoleUserTable = &schema.Table{
+		Name:       "org_role_user",
+		Columns:    OrgRoleUserColumns,
+		PrimaryKey: []*schema.Column{OrgRoleUserColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "org_role_user_org_role_org_role",
+				Columns:    []*schema.Column{OrgRoleUserColumns[3]},
+				RefColumns: []*schema.Column{OrgRoleColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "org_role_user_org_user_org_user",
+				Columns:    []*schema.Column{OrgRoleUserColumns[4]},
+				RefColumns: []*schema.Column{OrgUserColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "orgroleuser_org_role_id_org_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{OrgRoleUserColumns[3], OrgRoleUserColumns[4]},
+			},
+		},
+	}
+	// OrgUserColumns holds the columns for the "org_user" table.
+	OrgUserColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int"}},
+		{Name: "org_id", Type: field.TypeInt},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "joined_at", Type: field.TypeTime},
+		{Name: "display_name", Type: field.TypeString},
+	}
+	// OrgUserTable holds the schema information for the "org_user" table.
+	OrgUserTable = &schema.Table{
+		Name:       "org_user",
+		Columns:    OrgUserColumns,
+		PrimaryKey: []*schema.Column{OrgUserColumns[0]},
+	}
 	// ActProcDefColumns holds the columns for the "act_proc_def" table.
 	ActProcDefColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
@@ -130,7 +201,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeInt, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "org_id", Type: field.TypeInt},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "app_id", Type: field.TypeInt},
 		{Name: "category", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString, Nullable: true},
@@ -138,10 +209,9 @@ var (
 		{Name: "version", Type: field.TypeInt32, Nullable: true},
 		{Name: "revision", Type: field.TypeInt32, Nullable: true},
 		{Name: "version_tag", Type: field.TypeString, Nullable: true},
-		{Name: "resource_name", Type: field.TypeString, Nullable: true},
-		{Name: "dgrm_resource_name", Type: field.TypeString, Nullable: true},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "suspended"}, Default: "active"},
-		{Name: "resource_data", Type: field.TypeBytes, Nullable: true},
+		{Name: "resource_key", Type: field.TypeString, Nullable: true},
+		{Name: "resource_id", Type: field.TypeInt, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive", "processing"}, Default: "active"},
 		{Name: "deployment_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
 	}
 	// ActProcDefTable holds the schema information for the "act_proc_def" table.
@@ -152,7 +222,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "act_proc_def_act_deployment_proc_defs",
-				Columns:    []*schema.Column{ActProcDefColumns[17]},
+				Columns:    []*schema.Column{ActProcDefColumns[16]},
 				RefColumns: []*schema.Column{ActDeploymentColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -165,7 +235,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_by", Type: field.TypeInt, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "org_id", Type: field.TypeInt},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "app_id", Type: field.TypeInt},
 		{Name: "business_key", Type: field.TypeString},
 		{Name: "start_time", Type: field.TypeTime},
@@ -196,6 +266,7 @@ var (
 	// ActTaskColumns holds the columns for the "act_task" table.
 	ActTaskColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "bigint"}},
+		{Name: "tenant_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int"}},
 		{Name: "proc_def_id", Type: field.TypeInt},
 		{Name: "execution_id", Type: field.TypeString},
 		{Name: "run_id", Type: field.TypeString, Nullable: true},
@@ -208,7 +279,6 @@ var (
 		{Name: "agree_count", Type: field.TypeInt32, Default: 0},
 		{Name: "kind", Type: field.TypeEnum, Enums: []string{"AND", "OR"}, Default: "OR"},
 		{Name: "sequential", Type: field.TypeBool, Default: false},
-		{Name: "org_id", Type: field.TypeInt},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"created", "running", "finished", "canceled"}, Default: "created"},
@@ -234,6 +304,10 @@ var (
 		ActDecisionReqDefTable,
 		ActDeploymentTable,
 		ActIdentityLinkTable,
+		OrgAppTable,
+		OrgRoleTable,
+		OrgRoleUserTable,
+		OrgUserTable,
 		ActProcDefTable,
 		ActProcInstTable,
 		ActTaskTable,
@@ -255,6 +329,20 @@ func init() {
 	ActIdentityLinkTable.ForeignKeys[0].RefTable = ActTaskTable
 	ActIdentityLinkTable.Annotation = &entsql.Annotation{
 		Table: "act_identity_link",
+	}
+	OrgAppTable.Annotation = &entsql.Annotation{
+		Table: "org_app",
+	}
+	OrgRoleTable.Annotation = &entsql.Annotation{
+		Table: "org_role",
+	}
+	OrgRoleUserTable.ForeignKeys[0].RefTable = OrgRoleTable
+	OrgRoleUserTable.ForeignKeys[1].RefTable = OrgUserTable
+	OrgRoleUserTable.Annotation = &entsql.Annotation{
+		Table: "org_role_user",
+	}
+	OrgUserTable.Annotation = &entsql.Annotation{
+		Table: "org_user",
 	}
 	ActProcDefTable.ForeignKeys[0].RefTable = ActDeploymentTable
 	ActProcDefTable.Annotation = &entsql.Annotation{

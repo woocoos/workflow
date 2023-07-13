@@ -1,0 +1,19 @@
+namespace: default
+appName: approval-worker-test
+version: 0.0.1
+development: true
+
+temporal:
+  taskQueue: approval
+  clientOptions:
+    hostPort: localhost:7233
+
+store:
+  workflow:
+    driverName: mysql
+    dsn: "root:@tcp(localhost:3306)/workflow?parseTime=true&loc=Local"
+
+workflow:
+  deploymentDir: ./testdata
+
+snowflake:

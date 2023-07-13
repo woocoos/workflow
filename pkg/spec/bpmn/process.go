@@ -2,6 +2,7 @@ package bpmn
 
 type Process struct {
 	BaseElement
+	Name                         string                    `xml:"name,attr"`
 	ProcessType                  ProcessType               `xml:"processType,attr"`
 	IsClosed                     bool                      `xml:"isClosed,attr"`
 	IsExecutable                 bool                      `xml:"isExecutable,attr"`

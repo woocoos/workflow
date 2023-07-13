@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/identitylink"
@@ -20,6 +21,13 @@ type TaskCreate struct {
 	config
 	mutation *TaskMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
+}
+
+// SetTenantID sets the "tenant_id" field.
+func (tc *TaskCreate) SetTenantID(i int) *TaskCreate {
+	tc.mutation.SetTenantID(i)
+	return tc
 }
 
 // SetProcInstID sets the "proc_inst_id" field.
@@ -156,12 +164,6 @@ func (tc *TaskCreate) SetNillableSequential(b *bool) *TaskCreate {
 	return tc
 }
 
-// SetOrgID sets the "org_id" field.
-func (tc *TaskCreate) SetOrgID(i int) *TaskCreate {
-	tc.mutation.SetOrgID(i)
-	return tc
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (tc *TaskCreate) SetCreatedAt(t time.Time) *TaskCreate {
 	tc.mutation.SetCreatedAt(t)
@@ -245,8 +247,10 @@ func (tc *TaskCreate) Mutation() *TaskMutation {
 
 // Save creates the Task in the database.
 func (tc *TaskCreate) Save(ctx context.Context) (*Task, error) {
-	tc.defaults()
-	return withHooks[*Task, TaskMutation](ctx, tc.sqlSave, tc.mutation, tc.hooks)
+	if err := tc.defaults(); err != nil {
+		return nil, err
+	}
+	return withHooks(ctx, tc.sqlSave, tc.mutation, tc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -272,7 +276,7 @@ func (tc *TaskCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (tc *TaskCreate) defaults() {
+func (tc *TaskCreate) defaults() error {
 	if _, ok := tc.mutation.ParentID(); !ok {
 		v := task.DefaultParentID
 		tc.mutation.SetParentID(v)
@@ -290,10 +294,16 @@ func (tc *TaskCreate) defaults() {
 		tc.mutation.SetSequential(v)
 	}
 	if _, ok := tc.mutation.CreatedAt(); !ok {
+		if task.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized task.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := task.DefaultCreatedAt()
 		tc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := tc.mutation.UpdatedAt(); !ok {
+		if task.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized task.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := task.DefaultUpdatedAt()
 		tc.mutation.SetUpdatedAt(v)
 	}
@@ -302,13 +312,20 @@ func (tc *TaskCreate) defaults() {
 		tc.mutation.SetStatus(v)
 	}
 	if _, ok := tc.mutation.ID(); !ok {
+		if task.DefaultID == nil {
+			return fmt.Errorf("ent: uninitialized task.DefaultID (forgotten import ent/runtime?)")
+		}
 		v := task.DefaultID()
 		tc.mutation.SetID(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (tc *TaskCreate) check() error {
+	if _, ok := tc.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Task.tenant_id"`)}
+	}
 	if _, ok := tc.mutation.ProcInstID(); !ok {
 		return &ValidationError{Name: "proc_inst_id", err: errors.New(`ent: missing required field "Task.proc_inst_id"`)}
 	}
@@ -340,9 +357,6 @@ func (tc *TaskCreate) check() error {
 	}
 	if _, ok := tc.mutation.Sequential(); !ok {
 		return &ValidationError{Name: "sequential", err: errors.New(`ent: missing required field "Task.sequential"`)}
-	}
-	if _, ok := tc.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "Task.org_id"`)}
 	}
 	if _, ok := tc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Task.created_at"`)}
@@ -389,9 +403,15 @@ func (tc *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_node = &Task{config: tc.config}
 		_spec = sqlgraph.NewCreateSpec(task.Table, sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt))
 	)
+	_spec.Schema = tc.schemaConfig.Task
+	_spec.OnConflict = tc.conflict
 	if id, ok := tc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
+	}
+	if value, ok := tc.mutation.TenantID(); ok {
+		_spec.SetField(task.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := tc.mutation.ProcDefID(); ok {
 		_spec.SetField(task.FieldProcDefID, field.TypeInt, value)
@@ -441,10 +461,6 @@ func (tc *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_spec.SetField(task.FieldSequential, field.TypeBool, value)
 		_node.Sequential = value
 	}
-	if value, ok := tc.mutation.OrgID(); ok {
-		_spec.SetField(task.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
-	}
 	if value, ok := tc.mutation.CreatedAt(); ok {
 		_spec.SetField(task.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -465,12 +481,10 @@ func (tc *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 			Columns: []string{task.ProcInstColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tc.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -485,12 +499,10 @@ func (tc *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tc.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -499,10 +511,631 @@ func (tc *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Task.Create().
+//		SetTenantID(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.TaskUpsert) {
+//			SetTenantID(v+v).
+//		}).
+//		Exec(ctx)
+func (tc *TaskCreate) OnConflict(opts ...sql.ConflictOption) *TaskUpsertOne {
+	tc.conflict = opts
+	return &TaskUpsertOne{
+		create: tc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (tc *TaskCreate) OnConflictColumns(columns ...string) *TaskUpsertOne {
+	tc.conflict = append(tc.conflict, sql.ConflictColumns(columns...))
+	return &TaskUpsertOne{
+		create: tc,
+	}
+}
+
+type (
+	// TaskUpsertOne is the builder for "upsert"-ing
+	//  one Task node.
+	TaskUpsertOne struct {
+		create *TaskCreate
+	}
+
+	// TaskUpsert is the "OnConflict" setter.
+	TaskUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetProcInstID sets the "proc_inst_id" field.
+func (u *TaskUpsert) SetProcInstID(v int) *TaskUpsert {
+	u.Set(task.FieldProcInstID, v)
+	return u
+}
+
+// UpdateProcInstID sets the "proc_inst_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateProcInstID() *TaskUpsert {
+	u.SetExcluded(task.FieldProcInstID)
+	return u
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *TaskUpsert) SetProcDefID(v int) *TaskUpsert {
+	u.Set(task.FieldProcDefID, v)
+	return u
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateProcDefID() *TaskUpsert {
+	u.SetExcluded(task.FieldProcDefID)
+	return u
+}
+
+// AddProcDefID adds v to the "proc_def_id" field.
+func (u *TaskUpsert) AddProcDefID(v int) *TaskUpsert {
+	u.Add(task.FieldProcDefID, v)
+	return u
+}
+
+// SetExecutionID sets the "execution_id" field.
+func (u *TaskUpsert) SetExecutionID(v string) *TaskUpsert {
+	u.Set(task.FieldExecutionID, v)
+	return u
+}
+
+// UpdateExecutionID sets the "execution_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateExecutionID() *TaskUpsert {
+	u.SetExcluded(task.FieldExecutionID)
+	return u
+}
+
+// SetRunID sets the "run_id" field.
+func (u *TaskUpsert) SetRunID(v string) *TaskUpsert {
+	u.Set(task.FieldRunID, v)
+	return u
+}
+
+// UpdateRunID sets the "run_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateRunID() *TaskUpsert {
+	u.SetExcluded(task.FieldRunID)
+	return u
+}
+
+// ClearRunID clears the value of the "run_id" field.
+func (u *TaskUpsert) ClearRunID() *TaskUpsert {
+	u.SetNull(task.FieldRunID)
+	return u
+}
+
+// SetTaskDefKey sets the "task_def_key" field.
+func (u *TaskUpsert) SetTaskDefKey(v string) *TaskUpsert {
+	u.Set(task.FieldTaskDefKey, v)
+	return u
+}
+
+// UpdateTaskDefKey sets the "task_def_key" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateTaskDefKey() *TaskUpsert {
+	u.SetExcluded(task.FieldTaskDefKey)
+	return u
+}
+
+// SetParentID sets the "parent_id" field.
+func (u *TaskUpsert) SetParentID(v int) *TaskUpsert {
+	u.Set(task.FieldParentID, v)
+	return u
+}
+
+// UpdateParentID sets the "parent_id" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateParentID() *TaskUpsert {
+	u.SetExcluded(task.FieldParentID)
+	return u
+}
+
+// AddParentID adds v to the "parent_id" field.
+func (u *TaskUpsert) AddParentID(v int) *TaskUpsert {
+	u.Add(task.FieldParentID, v)
+	return u
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (u *TaskUpsert) ClearParentID() *TaskUpsert {
+	u.SetNull(task.FieldParentID)
+	return u
+}
+
+// SetComments sets the "comments" field.
+func (u *TaskUpsert) SetComments(v string) *TaskUpsert {
+	u.Set(task.FieldComments, v)
+	return u
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateComments() *TaskUpsert {
+	u.SetExcluded(task.FieldComments)
+	return u
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *TaskUpsert) ClearComments() *TaskUpsert {
+	u.SetNull(task.FieldComments)
+	return u
+}
+
+// SetAssignee sets the "assignee" field.
+func (u *TaskUpsert) SetAssignee(v string) *TaskUpsert {
+	u.Set(task.FieldAssignee, v)
+	return u
+}
+
+// UpdateAssignee sets the "assignee" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateAssignee() *TaskUpsert {
+	u.SetExcluded(task.FieldAssignee)
+	return u
+}
+
+// ClearAssignee clears the value of the "assignee" field.
+func (u *TaskUpsert) ClearAssignee() *TaskUpsert {
+	u.SetNull(task.FieldAssignee)
+	return u
+}
+
+// SetMemberCount sets the "member_count" field.
+func (u *TaskUpsert) SetMemberCount(v int32) *TaskUpsert {
+	u.Set(task.FieldMemberCount, v)
+	return u
+}
+
+// UpdateMemberCount sets the "member_count" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateMemberCount() *TaskUpsert {
+	u.SetExcluded(task.FieldMemberCount)
+	return u
+}
+
+// AddMemberCount adds v to the "member_count" field.
+func (u *TaskUpsert) AddMemberCount(v int32) *TaskUpsert {
+	u.Add(task.FieldMemberCount, v)
+	return u
+}
+
+// SetUnfinishedCount sets the "unfinished_count" field.
+func (u *TaskUpsert) SetUnfinishedCount(v int32) *TaskUpsert {
+	u.Set(task.FieldUnfinishedCount, v)
+	return u
+}
+
+// UpdateUnfinishedCount sets the "unfinished_count" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateUnfinishedCount() *TaskUpsert {
+	u.SetExcluded(task.FieldUnfinishedCount)
+	return u
+}
+
+// AddUnfinishedCount adds v to the "unfinished_count" field.
+func (u *TaskUpsert) AddUnfinishedCount(v int32) *TaskUpsert {
+	u.Add(task.FieldUnfinishedCount, v)
+	return u
+}
+
+// SetAgreeCount sets the "agree_count" field.
+func (u *TaskUpsert) SetAgreeCount(v int32) *TaskUpsert {
+	u.Set(task.FieldAgreeCount, v)
+	return u
+}
+
+// UpdateAgreeCount sets the "agree_count" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateAgreeCount() *TaskUpsert {
+	u.SetExcluded(task.FieldAgreeCount)
+	return u
+}
+
+// AddAgreeCount adds v to the "agree_count" field.
+func (u *TaskUpsert) AddAgreeCount(v int32) *TaskUpsert {
+	u.Add(task.FieldAgreeCount, v)
+	return u
+}
+
+// SetKind sets the "kind" field.
+func (u *TaskUpsert) SetKind(v task.Kind) *TaskUpsert {
+	u.Set(task.FieldKind, v)
+	return u
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateKind() *TaskUpsert {
+	u.SetExcluded(task.FieldKind)
+	return u
+}
+
+// SetSequential sets the "sequential" field.
+func (u *TaskUpsert) SetSequential(v bool) *TaskUpsert {
+	u.Set(task.FieldSequential, v)
+	return u
+}
+
+// UpdateSequential sets the "sequential" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateSequential() *TaskUpsert {
+	u.SetExcluded(task.FieldSequential)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsert) SetStatus(v task.Status) *TaskUpsert {
+	u.Set(task.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsert) UpdateStatus() *TaskUpsert {
+	u.SetExcluded(task.FieldStatus)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(task.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *TaskUpsertOne) UpdateNewValues() *TaskUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(task.FieldID)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(task.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(task.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.UpdatedAt(); exists {
+			s.SetIgnore(task.FieldUpdatedAt)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *TaskUpsertOne) Ignore() *TaskUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *TaskUpsertOne) DoNothing() *TaskUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the TaskCreate.OnConflict
+// documentation for more info.
+func (u *TaskUpsertOne) Update(set func(*TaskUpsert)) *TaskUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&TaskUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetProcInstID sets the "proc_inst_id" field.
+func (u *TaskUpsertOne) SetProcInstID(v int) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetProcInstID(v)
+	})
+}
+
+// UpdateProcInstID sets the "proc_inst_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateProcInstID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateProcInstID()
+	})
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *TaskUpsertOne) SetProcDefID(v int) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetProcDefID(v)
+	})
+}
+
+// AddProcDefID adds v to the "proc_def_id" field.
+func (u *TaskUpsertOne) AddProcDefID(v int) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddProcDefID(v)
+	})
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateProcDefID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateProcDefID()
+	})
+}
+
+// SetExecutionID sets the "execution_id" field.
+func (u *TaskUpsertOne) SetExecutionID(v string) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetExecutionID(v)
+	})
+}
+
+// UpdateExecutionID sets the "execution_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateExecutionID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateExecutionID()
+	})
+}
+
+// SetRunID sets the "run_id" field.
+func (u *TaskUpsertOne) SetRunID(v string) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetRunID(v)
+	})
+}
+
+// UpdateRunID sets the "run_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateRunID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateRunID()
+	})
+}
+
+// ClearRunID clears the value of the "run_id" field.
+func (u *TaskUpsertOne) ClearRunID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearRunID()
+	})
+}
+
+// SetTaskDefKey sets the "task_def_key" field.
+func (u *TaskUpsertOne) SetTaskDefKey(v string) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetTaskDefKey(v)
+	})
+}
+
+// UpdateTaskDefKey sets the "task_def_key" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateTaskDefKey() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateTaskDefKey()
+	})
+}
+
+// SetParentID sets the "parent_id" field.
+func (u *TaskUpsertOne) SetParentID(v int) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetParentID(v)
+	})
+}
+
+// AddParentID adds v to the "parent_id" field.
+func (u *TaskUpsertOne) AddParentID(v int) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddParentID(v)
+	})
+}
+
+// UpdateParentID sets the "parent_id" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateParentID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateParentID()
+	})
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (u *TaskUpsertOne) ClearParentID() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearParentID()
+	})
+}
+
+// SetComments sets the "comments" field.
+func (u *TaskUpsertOne) SetComments(v string) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetComments(v)
+	})
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateComments() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateComments()
+	})
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *TaskUpsertOne) ClearComments() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearComments()
+	})
+}
+
+// SetAssignee sets the "assignee" field.
+func (u *TaskUpsertOne) SetAssignee(v string) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetAssignee(v)
+	})
+}
+
+// UpdateAssignee sets the "assignee" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateAssignee() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateAssignee()
+	})
+}
+
+// ClearAssignee clears the value of the "assignee" field.
+func (u *TaskUpsertOne) ClearAssignee() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearAssignee()
+	})
+}
+
+// SetMemberCount sets the "member_count" field.
+func (u *TaskUpsertOne) SetMemberCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetMemberCount(v)
+	})
+}
+
+// AddMemberCount adds v to the "member_count" field.
+func (u *TaskUpsertOne) AddMemberCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddMemberCount(v)
+	})
+}
+
+// UpdateMemberCount sets the "member_count" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateMemberCount() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateMemberCount()
+	})
+}
+
+// SetUnfinishedCount sets the "unfinished_count" field.
+func (u *TaskUpsertOne) SetUnfinishedCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetUnfinishedCount(v)
+	})
+}
+
+// AddUnfinishedCount adds v to the "unfinished_count" field.
+func (u *TaskUpsertOne) AddUnfinishedCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddUnfinishedCount(v)
+	})
+}
+
+// UpdateUnfinishedCount sets the "unfinished_count" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateUnfinishedCount() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateUnfinishedCount()
+	})
+}
+
+// SetAgreeCount sets the "agree_count" field.
+func (u *TaskUpsertOne) SetAgreeCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetAgreeCount(v)
+	})
+}
+
+// AddAgreeCount adds v to the "agree_count" field.
+func (u *TaskUpsertOne) AddAgreeCount(v int32) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddAgreeCount(v)
+	})
+}
+
+// UpdateAgreeCount sets the "agree_count" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateAgreeCount() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateAgreeCount()
+	})
+}
+
+// SetKind sets the "kind" field.
+func (u *TaskUpsertOne) SetKind(v task.Kind) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetKind(v)
+	})
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateKind() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateKind()
+	})
+}
+
+// SetSequential sets the "sequential" field.
+func (u *TaskUpsertOne) SetSequential(v bool) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetSequential(v)
+	})
+}
+
+// UpdateSequential sets the "sequential" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateSequential() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateSequential()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsertOne) SetStatus(v task.Status) *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsertOne) UpdateStatus() *TaskUpsertOne {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *TaskUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for TaskCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *TaskUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *TaskUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *TaskUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // TaskCreateBulk is the builder for creating many Task entities in bulk.
 type TaskCreateBulk struct {
 	config
 	builders []*TaskCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Task entities in the database.
@@ -523,12 +1156,13 @@ func (tcb *TaskCreateBulk) Save(ctx context.Context) ([]*Task, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, tcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = tcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, tcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -579,6 +1213,385 @@ func (tcb *TaskCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (tcb *TaskCreateBulk) ExecX(ctx context.Context) {
 	if err := tcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Task.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.TaskUpsert) {
+//			SetTenantID(v+v).
+//		}).
+//		Exec(ctx)
+func (tcb *TaskCreateBulk) OnConflict(opts ...sql.ConflictOption) *TaskUpsertBulk {
+	tcb.conflict = opts
+	return &TaskUpsertBulk{
+		create: tcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (tcb *TaskCreateBulk) OnConflictColumns(columns ...string) *TaskUpsertBulk {
+	tcb.conflict = append(tcb.conflict, sql.ConflictColumns(columns...))
+	return &TaskUpsertBulk{
+		create: tcb,
+	}
+}
+
+// TaskUpsertBulk is the builder for "upsert"-ing
+// a bulk of Task nodes.
+type TaskUpsertBulk struct {
+	create *TaskCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(task.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *TaskUpsertBulk) UpdateNewValues() *TaskUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(task.FieldID)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(task.FieldTenantID)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(task.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.UpdatedAt(); exists {
+				s.SetIgnore(task.FieldUpdatedAt)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Task.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *TaskUpsertBulk) Ignore() *TaskUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *TaskUpsertBulk) DoNothing() *TaskUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the TaskCreateBulk.OnConflict
+// documentation for more info.
+func (u *TaskUpsertBulk) Update(set func(*TaskUpsert)) *TaskUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&TaskUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetProcInstID sets the "proc_inst_id" field.
+func (u *TaskUpsertBulk) SetProcInstID(v int) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetProcInstID(v)
+	})
+}
+
+// UpdateProcInstID sets the "proc_inst_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateProcInstID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateProcInstID()
+	})
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *TaskUpsertBulk) SetProcDefID(v int) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetProcDefID(v)
+	})
+}
+
+// AddProcDefID adds v to the "proc_def_id" field.
+func (u *TaskUpsertBulk) AddProcDefID(v int) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddProcDefID(v)
+	})
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateProcDefID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateProcDefID()
+	})
+}
+
+// SetExecutionID sets the "execution_id" field.
+func (u *TaskUpsertBulk) SetExecutionID(v string) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetExecutionID(v)
+	})
+}
+
+// UpdateExecutionID sets the "execution_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateExecutionID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateExecutionID()
+	})
+}
+
+// SetRunID sets the "run_id" field.
+func (u *TaskUpsertBulk) SetRunID(v string) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetRunID(v)
+	})
+}
+
+// UpdateRunID sets the "run_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateRunID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateRunID()
+	})
+}
+
+// ClearRunID clears the value of the "run_id" field.
+func (u *TaskUpsertBulk) ClearRunID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearRunID()
+	})
+}
+
+// SetTaskDefKey sets the "task_def_key" field.
+func (u *TaskUpsertBulk) SetTaskDefKey(v string) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetTaskDefKey(v)
+	})
+}
+
+// UpdateTaskDefKey sets the "task_def_key" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateTaskDefKey() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateTaskDefKey()
+	})
+}
+
+// SetParentID sets the "parent_id" field.
+func (u *TaskUpsertBulk) SetParentID(v int) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetParentID(v)
+	})
+}
+
+// AddParentID adds v to the "parent_id" field.
+func (u *TaskUpsertBulk) AddParentID(v int) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddParentID(v)
+	})
+}
+
+// UpdateParentID sets the "parent_id" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateParentID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateParentID()
+	})
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (u *TaskUpsertBulk) ClearParentID() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearParentID()
+	})
+}
+
+// SetComments sets the "comments" field.
+func (u *TaskUpsertBulk) SetComments(v string) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetComments(v)
+	})
+}
+
+// UpdateComments sets the "comments" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateComments() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateComments()
+	})
+}
+
+// ClearComments clears the value of the "comments" field.
+func (u *TaskUpsertBulk) ClearComments() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearComments()
+	})
+}
+
+// SetAssignee sets the "assignee" field.
+func (u *TaskUpsertBulk) SetAssignee(v string) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetAssignee(v)
+	})
+}
+
+// UpdateAssignee sets the "assignee" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateAssignee() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateAssignee()
+	})
+}
+
+// ClearAssignee clears the value of the "assignee" field.
+func (u *TaskUpsertBulk) ClearAssignee() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.ClearAssignee()
+	})
+}
+
+// SetMemberCount sets the "member_count" field.
+func (u *TaskUpsertBulk) SetMemberCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetMemberCount(v)
+	})
+}
+
+// AddMemberCount adds v to the "member_count" field.
+func (u *TaskUpsertBulk) AddMemberCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddMemberCount(v)
+	})
+}
+
+// UpdateMemberCount sets the "member_count" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateMemberCount() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateMemberCount()
+	})
+}
+
+// SetUnfinishedCount sets the "unfinished_count" field.
+func (u *TaskUpsertBulk) SetUnfinishedCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetUnfinishedCount(v)
+	})
+}
+
+// AddUnfinishedCount adds v to the "unfinished_count" field.
+func (u *TaskUpsertBulk) AddUnfinishedCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddUnfinishedCount(v)
+	})
+}
+
+// UpdateUnfinishedCount sets the "unfinished_count" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateUnfinishedCount() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateUnfinishedCount()
+	})
+}
+
+// SetAgreeCount sets the "agree_count" field.
+func (u *TaskUpsertBulk) SetAgreeCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetAgreeCount(v)
+	})
+}
+
+// AddAgreeCount adds v to the "agree_count" field.
+func (u *TaskUpsertBulk) AddAgreeCount(v int32) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.AddAgreeCount(v)
+	})
+}
+
+// UpdateAgreeCount sets the "agree_count" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateAgreeCount() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateAgreeCount()
+	})
+}
+
+// SetKind sets the "kind" field.
+func (u *TaskUpsertBulk) SetKind(v task.Kind) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetKind(v)
+	})
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateKind() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateKind()
+	})
+}
+
+// SetSequential sets the "sequential" field.
+func (u *TaskUpsertBulk) SetSequential(v bool) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetSequential(v)
+	})
+}
+
+// UpdateSequential sets the "sequential" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateSequential() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateSequential()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *TaskUpsertBulk) SetStatus(v task.Status) *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *TaskUpsertBulk) UpdateStatus() *TaskUpsertBulk {
+	return u.Update(func(s *TaskUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *TaskUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the TaskCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for TaskCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *TaskUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

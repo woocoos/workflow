@@ -8,7 +8,18 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent"
+	"github.com/woocoos/workflow/ent/decisiondef"
+	"github.com/woocoos/workflow/ent/decisionreqdef"
+	"github.com/woocoos/workflow/ent/deployment"
+	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orgapp"
+	"github.com/woocoos/workflow/ent/orgrole"
+	"github.com/woocoos/workflow/ent/orgroleuser"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/predicate"
+	"github.com/woocoos/workflow/ent/procdef"
+	"github.com/woocoos/workflow/ent/procinst"
+	"github.com/woocoos/workflow/ent/task"
 )
 
 // The Query interface represents an operation that queries a graph.
@@ -24,7 +35,7 @@ type Query interface {
 	// Unique configures the query builder to filter duplicate records.
 	Unique(bool)
 	// Order specifies how the records should be ordered.
-	Order(...ent.OrderFunc)
+	Order(...func(*sql.Selector))
 	// WhereP appends storage-level predicates to the query builder. Using this method, users
 	// can use type-assertion to append predicates that do not depend on any generated package.
 	WhereP(...func(*sql.Selector))
@@ -175,6 +186,114 @@ func (f TraverseIdentityLink) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.IdentityLinkQuery", q)
 }
 
+// The OrgAppFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OrgAppFunc func(context.Context, *ent.OrgAppQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OrgAppFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OrgAppQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OrgAppQuery", q)
+}
+
+// The TraverseOrgApp type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOrgApp func(context.Context, *ent.OrgAppQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOrgApp) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOrgApp) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OrgAppQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OrgAppQuery", q)
+}
+
+// The OrgRoleFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OrgRoleFunc func(context.Context, *ent.OrgRoleQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OrgRoleFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OrgRoleQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OrgRoleQuery", q)
+}
+
+// The TraverseOrgRole type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOrgRole func(context.Context, *ent.OrgRoleQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOrgRole) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOrgRole) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OrgRoleQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OrgRoleQuery", q)
+}
+
+// The OrgRoleUserFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OrgRoleUserFunc func(context.Context, *ent.OrgRoleUserQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OrgRoleUserFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OrgRoleUserQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OrgRoleUserQuery", q)
+}
+
+// The TraverseOrgRoleUser type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOrgRoleUser func(context.Context, *ent.OrgRoleUserQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOrgRoleUser) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOrgRoleUser) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OrgRoleUserQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OrgRoleUserQuery", q)
+}
+
+// The OrgUserFunc type is an adapter to allow the use of ordinary function as a Querier.
+type OrgUserFunc func(context.Context, *ent.OrgUserQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f OrgUserFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.OrgUserQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.OrgUserQuery", q)
+}
+
+// The TraverseOrgUser type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseOrgUser func(context.Context, *ent.OrgUserQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseOrgUser) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseOrgUser) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.OrgUserQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.OrgUserQuery", q)
+}
+
 // The ProcDefFunc type is an adapter to allow the use of ordinary function as a Querier.
 type ProcDefFunc func(context.Context, *ent.ProcDefQuery) (ent.Value, error)
 
@@ -260,56 +379,68 @@ func (f TraverseTask) Traverse(ctx context.Context, q ent.Query) error {
 func NewQuery(q ent.Query) (Query, error) {
 	switch q := q.(type) {
 	case *ent.DecisionDefQuery:
-		return &query[*ent.DecisionDefQuery, predicate.DecisionDef]{typ: ent.TypeDecisionDef, tq: q}, nil
+		return &query[*ent.DecisionDefQuery, predicate.DecisionDef, decisiondef.OrderOption]{typ: ent.TypeDecisionDef, tq: q}, nil
 	case *ent.DecisionReqDefQuery:
-		return &query[*ent.DecisionReqDefQuery, predicate.DecisionReqDef]{typ: ent.TypeDecisionReqDef, tq: q}, nil
+		return &query[*ent.DecisionReqDefQuery, predicate.DecisionReqDef, decisionreqdef.OrderOption]{typ: ent.TypeDecisionReqDef, tq: q}, nil
 	case *ent.DeploymentQuery:
-		return &query[*ent.DeploymentQuery, predicate.Deployment]{typ: ent.TypeDeployment, tq: q}, nil
+		return &query[*ent.DeploymentQuery, predicate.Deployment, deployment.OrderOption]{typ: ent.TypeDeployment, tq: q}, nil
 	case *ent.IdentityLinkQuery:
-		return &query[*ent.IdentityLinkQuery, predicate.IdentityLink]{typ: ent.TypeIdentityLink, tq: q}, nil
+		return &query[*ent.IdentityLinkQuery, predicate.IdentityLink, identitylink.OrderOption]{typ: ent.TypeIdentityLink, tq: q}, nil
+	case *ent.OrgAppQuery:
+		return &query[*ent.OrgAppQuery, predicate.OrgApp, orgapp.OrderOption]{typ: ent.TypeOrgApp, tq: q}, nil
+	case *ent.OrgRoleQuery:
+		return &query[*ent.OrgRoleQuery, predicate.OrgRole, orgrole.OrderOption]{typ: ent.TypeOrgRole, tq: q}, nil
+	case *ent.OrgRoleUserQuery:
+		return &query[*ent.OrgRoleUserQuery, predicate.OrgRoleUser, orgroleuser.OrderOption]{typ: ent.TypeOrgRoleUser, tq: q}, nil
+	case *ent.OrgUserQuery:
+		return &query[*ent.OrgUserQuery, predicate.OrgUser, orguser.OrderOption]{typ: ent.TypeOrgUser, tq: q}, nil
 	case *ent.ProcDefQuery:
-		return &query[*ent.ProcDefQuery, predicate.ProcDef]{typ: ent.TypeProcDef, tq: q}, nil
+		return &query[*ent.ProcDefQuery, predicate.ProcDef, procdef.OrderOption]{typ: ent.TypeProcDef, tq: q}, nil
 	case *ent.ProcInstQuery:
-		return &query[*ent.ProcInstQuery, predicate.ProcInst]{typ: ent.TypeProcInst, tq: q}, nil
+		return &query[*ent.ProcInstQuery, predicate.ProcInst, procinst.OrderOption]{typ: ent.TypeProcInst, tq: q}, nil
 	case *ent.TaskQuery:
-		return &query[*ent.TaskQuery, predicate.Task]{typ: ent.TypeTask, tq: q}, nil
+		return &query[*ent.TaskQuery, predicate.Task, task.OrderOption]{typ: ent.TypeTask, tq: q}, nil
 	default:
 		return nil, fmt.Errorf("unknown query type %T", q)
 	}
 }
 
-type query[T any, P ~func(*sql.Selector)] struct {
+type query[T any, P ~func(*sql.Selector), R ~func(*sql.Selector)] struct {
 	typ string
 	tq  interface {
 		Limit(int) T
 		Offset(int) T
 		Unique(bool) T
-		Order(...ent.OrderFunc) T
+		Order(...R) T
 		Where(...P) T
 	}
 }
 
-func (q query[T, P]) Type() string {
+func (q query[T, P, R]) Type() string {
 	return q.typ
 }
 
-func (q query[T, P]) Limit(limit int) {
+func (q query[T, P, R]) Limit(limit int) {
 	q.tq.Limit(limit)
 }
 
-func (q query[T, P]) Offset(offset int) {
+func (q query[T, P, R]) Offset(offset int) {
 	q.tq.Offset(offset)
 }
 
-func (q query[T, P]) Unique(unique bool) {
+func (q query[T, P, R]) Unique(unique bool) {
 	q.tq.Unique(unique)
 }
 
-func (q query[T, P]) Order(orders ...ent.OrderFunc) {
-	q.tq.Order(orders...)
+func (q query[T, P, R]) Order(orders ...func(*sql.Selector)) {
+	rs := make([]R, len(orders))
+	for i := range orders {
+		rs[i] = orders[i]
+	}
+	q.tq.Order(rs...)
 }
 
-func (q query[T, P]) WhereP(ps ...func(*sql.Selector)) {
+func (q query[T, P, R]) WhereP(ps ...func(*sql.Selector)) {
 	p := make([]P, len(ps))
 	for i := range ps {
 		p[i] = ps[i]

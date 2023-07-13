@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/woocoos/entco/schemax/typex"
 	"github.com/woocoos/workflow/ent/decisiondef"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orgrole"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
@@ -78,6 +81,16 @@ type DecisionDefWhereInput struct {
 	UpdatedAtIsNil  bool        `json:"updatedAtIsNil,omitempty"`
 	UpdatedAtNotNil bool        `json:"updatedAtNotNil,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "deployment_id" field predicates.
 	DeploymentID      *int  `json:"deploymentID,omitempty"`
 	DeploymentIDNEQ   *int  `json:"deploymentIDNEQ,omitempty"`
@@ -87,16 +100,6 @@ type DecisionDefWhereInput struct {
 	DeploymentIDGTE   *int  `json:"deploymentIDGTE,omitempty"`
 	DeploymentIDLT    *int  `json:"deploymentIDLT,omitempty"`
 	DeploymentIDLTE   *int  `json:"deploymentIDLTE,omitempty"`
-
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
 
 	// "app_id" field predicates.
 	AppID      *int  `json:"appID,omitempty"`
@@ -216,40 +219,6 @@ type DecisionDefWhereInput struct {
 	VersionTagNotNil       bool     `json:"versionTagNotNil,omitempty"`
 	VersionTagEqualFold    *string  `json:"versionTagEqualFold,omitempty"`
 	VersionTagContainsFold *string  `json:"versionTagContainsFold,omitempty"`
-
-	// "resource_name" field predicates.
-	ResourceName             *string  `json:"resourceName,omitempty"`
-	ResourceNameNEQ          *string  `json:"resourceNameNEQ,omitempty"`
-	ResourceNameIn           []string `json:"resourceNameIn,omitempty"`
-	ResourceNameNotIn        []string `json:"resourceNameNotIn,omitempty"`
-	ResourceNameGT           *string  `json:"resourceNameGT,omitempty"`
-	ResourceNameGTE          *string  `json:"resourceNameGTE,omitempty"`
-	ResourceNameLT           *string  `json:"resourceNameLT,omitempty"`
-	ResourceNameLTE          *string  `json:"resourceNameLTE,omitempty"`
-	ResourceNameContains     *string  `json:"resourceNameContains,omitempty"`
-	ResourceNameHasPrefix    *string  `json:"resourceNameHasPrefix,omitempty"`
-	ResourceNameHasSuffix    *string  `json:"resourceNameHasSuffix,omitempty"`
-	ResourceNameIsNil        bool     `json:"resourceNameIsNil,omitempty"`
-	ResourceNameNotNil       bool     `json:"resourceNameNotNil,omitempty"`
-	ResourceNameEqualFold    *string  `json:"resourceNameEqualFold,omitempty"`
-	ResourceNameContainsFold *string  `json:"resourceNameContainsFold,omitempty"`
-
-	// "dgrm_resource_name" field predicates.
-	DgrmResourceName             *string  `json:"dgrmResourceName,omitempty"`
-	DgrmResourceNameNEQ          *string  `json:"dgrmResourceNameNEQ,omitempty"`
-	DgrmResourceNameIn           []string `json:"dgrmResourceNameIn,omitempty"`
-	DgrmResourceNameNotIn        []string `json:"dgrmResourceNameNotIn,omitempty"`
-	DgrmResourceNameGT           *string  `json:"dgrmResourceNameGT,omitempty"`
-	DgrmResourceNameGTE          *string  `json:"dgrmResourceNameGTE,omitempty"`
-	DgrmResourceNameLT           *string  `json:"dgrmResourceNameLT,omitempty"`
-	DgrmResourceNameLTE          *string  `json:"dgrmResourceNameLTE,omitempty"`
-	DgrmResourceNameContains     *string  `json:"dgrmResourceNameContains,omitempty"`
-	DgrmResourceNameHasPrefix    *string  `json:"dgrmResourceNameHasPrefix,omitempty"`
-	DgrmResourceNameHasSuffix    *string  `json:"dgrmResourceNameHasSuffix,omitempty"`
-	DgrmResourceNameIsNil        bool     `json:"dgrmResourceNameIsNil,omitempty"`
-	DgrmResourceNameNotNil       bool     `json:"dgrmResourceNameNotNil,omitempty"`
-	DgrmResourceNameEqualFold    *string  `json:"dgrmResourceNameEqualFold,omitempty"`
-	DgrmResourceNameContainsFold *string  `json:"dgrmResourceNameContainsFold,omitempty"`
 
 	// "req_def" edge predicates.
 	HasReqDef     *bool                       `json:"hasReqDef,omitempty"`
@@ -459,6 +428,30 @@ func (i *DecisionDefWhereInput) P() (predicate.DecisionDef, error) {
 	if i.UpdatedAtNotNil {
 		predicates = append(predicates, decisiondef.UpdatedAtNotNil())
 	}
+	if i.TenantID != nil {
+		predicates = append(predicates, decisiondef.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, decisiondef.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, decisiondef.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, decisiondef.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, decisiondef.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, decisiondef.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, decisiondef.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, decisiondef.TenantIDLTE(*i.TenantIDLTE))
+	}
 	if i.DeploymentID != nil {
 		predicates = append(predicates, decisiondef.DeploymentIDEQ(*i.DeploymentID))
 	}
@@ -482,30 +475,6 @@ func (i *DecisionDefWhereInput) P() (predicate.DecisionDef, error) {
 	}
 	if i.DeploymentIDLTE != nil {
 		predicates = append(predicates, decisiondef.DeploymentIDLTE(*i.DeploymentIDLTE))
-	}
-	if i.OrgID != nil {
-		predicates = append(predicates, decisiondef.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, decisiondef.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, decisiondef.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, decisiondef.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, decisiondef.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, decisiondef.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, decisiondef.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, decisiondef.OrgIDLTE(*i.OrgIDLTE))
 	}
 	if i.AppID != nil {
 		predicates = append(predicates, decisiondef.AppIDEQ(*i.AppID))
@@ -810,96 +779,6 @@ func (i *DecisionDefWhereInput) P() (predicate.DecisionDef, error) {
 	if i.VersionTagContainsFold != nil {
 		predicates = append(predicates, decisiondef.VersionTagContainsFold(*i.VersionTagContainsFold))
 	}
-	if i.ResourceName != nil {
-		predicates = append(predicates, decisiondef.ResourceNameEQ(*i.ResourceName))
-	}
-	if i.ResourceNameNEQ != nil {
-		predicates = append(predicates, decisiondef.ResourceNameNEQ(*i.ResourceNameNEQ))
-	}
-	if len(i.ResourceNameIn) > 0 {
-		predicates = append(predicates, decisiondef.ResourceNameIn(i.ResourceNameIn...))
-	}
-	if len(i.ResourceNameNotIn) > 0 {
-		predicates = append(predicates, decisiondef.ResourceNameNotIn(i.ResourceNameNotIn...))
-	}
-	if i.ResourceNameGT != nil {
-		predicates = append(predicates, decisiondef.ResourceNameGT(*i.ResourceNameGT))
-	}
-	if i.ResourceNameGTE != nil {
-		predicates = append(predicates, decisiondef.ResourceNameGTE(*i.ResourceNameGTE))
-	}
-	if i.ResourceNameLT != nil {
-		predicates = append(predicates, decisiondef.ResourceNameLT(*i.ResourceNameLT))
-	}
-	if i.ResourceNameLTE != nil {
-		predicates = append(predicates, decisiondef.ResourceNameLTE(*i.ResourceNameLTE))
-	}
-	if i.ResourceNameContains != nil {
-		predicates = append(predicates, decisiondef.ResourceNameContains(*i.ResourceNameContains))
-	}
-	if i.ResourceNameHasPrefix != nil {
-		predicates = append(predicates, decisiondef.ResourceNameHasPrefix(*i.ResourceNameHasPrefix))
-	}
-	if i.ResourceNameHasSuffix != nil {
-		predicates = append(predicates, decisiondef.ResourceNameHasSuffix(*i.ResourceNameHasSuffix))
-	}
-	if i.ResourceNameIsNil {
-		predicates = append(predicates, decisiondef.ResourceNameIsNil())
-	}
-	if i.ResourceNameNotNil {
-		predicates = append(predicates, decisiondef.ResourceNameNotNil())
-	}
-	if i.ResourceNameEqualFold != nil {
-		predicates = append(predicates, decisiondef.ResourceNameEqualFold(*i.ResourceNameEqualFold))
-	}
-	if i.ResourceNameContainsFold != nil {
-		predicates = append(predicates, decisiondef.ResourceNameContainsFold(*i.ResourceNameContainsFold))
-	}
-	if i.DgrmResourceName != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameEQ(*i.DgrmResourceName))
-	}
-	if i.DgrmResourceNameNEQ != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameNEQ(*i.DgrmResourceNameNEQ))
-	}
-	if len(i.DgrmResourceNameIn) > 0 {
-		predicates = append(predicates, decisiondef.DgrmResourceNameIn(i.DgrmResourceNameIn...))
-	}
-	if len(i.DgrmResourceNameNotIn) > 0 {
-		predicates = append(predicates, decisiondef.DgrmResourceNameNotIn(i.DgrmResourceNameNotIn...))
-	}
-	if i.DgrmResourceNameGT != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameGT(*i.DgrmResourceNameGT))
-	}
-	if i.DgrmResourceNameGTE != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameGTE(*i.DgrmResourceNameGTE))
-	}
-	if i.DgrmResourceNameLT != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameLT(*i.DgrmResourceNameLT))
-	}
-	if i.DgrmResourceNameLTE != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameLTE(*i.DgrmResourceNameLTE))
-	}
-	if i.DgrmResourceNameContains != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameContains(*i.DgrmResourceNameContains))
-	}
-	if i.DgrmResourceNameHasPrefix != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameHasPrefix(*i.DgrmResourceNameHasPrefix))
-	}
-	if i.DgrmResourceNameHasSuffix != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameHasSuffix(*i.DgrmResourceNameHasSuffix))
-	}
-	if i.DgrmResourceNameIsNil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameIsNil())
-	}
-	if i.DgrmResourceNameNotNil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameNotNil())
-	}
-	if i.DgrmResourceNameEqualFold != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameEqualFold(*i.DgrmResourceNameEqualFold))
-	}
-	if i.DgrmResourceNameContainsFold != nil {
-		predicates = append(predicates, decisiondef.DgrmResourceNameContainsFold(*i.DgrmResourceNameContainsFold))
-	}
 
 	if i.HasReqDef != nil {
 		p := decisiondef.HasReqDef()
@@ -990,21 +869,21 @@ type DecisionReqDefWhereInput struct {
 	UpdatedAtIsNil  bool        `json:"updatedAtIsNil,omitempty"`
 	UpdatedAtNotNil bool        `json:"updatedAtNotNil,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "deployment_id" field predicates.
 	DeploymentID      *int  `json:"deploymentID,omitempty"`
 	DeploymentIDNEQ   *int  `json:"deploymentIDNEQ,omitempty"`
 	DeploymentIDIn    []int `json:"deploymentIDIn,omitempty"`
 	DeploymentIDNotIn []int `json:"deploymentIDNotIn,omitempty"`
-
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
 
 	// "app_id" field predicates.
 	AppID      *int  `json:"appID,omitempty"`
@@ -1086,40 +965,6 @@ type DecisionReqDefWhereInput struct {
 	RevisionLTE    *int32  `json:"revisionLTE,omitempty"`
 	RevisionIsNil  bool    `json:"revisionIsNil,omitempty"`
 	RevisionNotNil bool    `json:"revisionNotNil,omitempty"`
-
-	// "resource_name" field predicates.
-	ResourceName             *string  `json:"resourceName,omitempty"`
-	ResourceNameNEQ          *string  `json:"resourceNameNEQ,omitempty"`
-	ResourceNameIn           []string `json:"resourceNameIn,omitempty"`
-	ResourceNameNotIn        []string `json:"resourceNameNotIn,omitempty"`
-	ResourceNameGT           *string  `json:"resourceNameGT,omitempty"`
-	ResourceNameGTE          *string  `json:"resourceNameGTE,omitempty"`
-	ResourceNameLT           *string  `json:"resourceNameLT,omitempty"`
-	ResourceNameLTE          *string  `json:"resourceNameLTE,omitempty"`
-	ResourceNameContains     *string  `json:"resourceNameContains,omitempty"`
-	ResourceNameHasPrefix    *string  `json:"resourceNameHasPrefix,omitempty"`
-	ResourceNameHasSuffix    *string  `json:"resourceNameHasSuffix,omitempty"`
-	ResourceNameIsNil        bool     `json:"resourceNameIsNil,omitempty"`
-	ResourceNameNotNil       bool     `json:"resourceNameNotNil,omitempty"`
-	ResourceNameEqualFold    *string  `json:"resourceNameEqualFold,omitempty"`
-	ResourceNameContainsFold *string  `json:"resourceNameContainsFold,omitempty"`
-
-	// "dgrm_resource_name" field predicates.
-	DgrmResourceName             *string  `json:"dgrmResourceName,omitempty"`
-	DgrmResourceNameNEQ          *string  `json:"dgrmResourceNameNEQ,omitempty"`
-	DgrmResourceNameIn           []string `json:"dgrmResourceNameIn,omitempty"`
-	DgrmResourceNameNotIn        []string `json:"dgrmResourceNameNotIn,omitempty"`
-	DgrmResourceNameGT           *string  `json:"dgrmResourceNameGT,omitempty"`
-	DgrmResourceNameGTE          *string  `json:"dgrmResourceNameGTE,omitempty"`
-	DgrmResourceNameLT           *string  `json:"dgrmResourceNameLT,omitempty"`
-	DgrmResourceNameLTE          *string  `json:"dgrmResourceNameLTE,omitempty"`
-	DgrmResourceNameContains     *string  `json:"dgrmResourceNameContains,omitempty"`
-	DgrmResourceNameHasPrefix    *string  `json:"dgrmResourceNameHasPrefix,omitempty"`
-	DgrmResourceNameHasSuffix    *string  `json:"dgrmResourceNameHasSuffix,omitempty"`
-	DgrmResourceNameIsNil        bool     `json:"dgrmResourceNameIsNil,omitempty"`
-	DgrmResourceNameNotNil       bool     `json:"dgrmResourceNameNotNil,omitempty"`
-	DgrmResourceNameEqualFold    *string  `json:"dgrmResourceNameEqualFold,omitempty"`
-	DgrmResourceNameContainsFold *string  `json:"dgrmResourceNameContainsFold,omitempty"`
 
 	// "deployment" edge predicates.
 	HasDeployment     *bool                   `json:"hasDeployment,omitempty"`
@@ -1333,6 +1178,30 @@ func (i *DecisionReqDefWhereInput) P() (predicate.DecisionReqDef, error) {
 	if i.UpdatedAtNotNil {
 		predicates = append(predicates, decisionreqdef.UpdatedAtNotNil())
 	}
+	if i.TenantID != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, decisionreqdef.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, decisionreqdef.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, decisionreqdef.TenantIDLTE(*i.TenantIDLTE))
+	}
 	if i.DeploymentID != nil {
 		predicates = append(predicates, decisionreqdef.DeploymentIDEQ(*i.DeploymentID))
 	}
@@ -1344,30 +1213,6 @@ func (i *DecisionReqDefWhereInput) P() (predicate.DecisionReqDef, error) {
 	}
 	if len(i.DeploymentIDNotIn) > 0 {
 		predicates = append(predicates, decisionreqdef.DeploymentIDNotIn(i.DeploymentIDNotIn...))
-	}
-	if i.OrgID != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, decisionreqdef.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, decisionreqdef.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, decisionreqdef.OrgIDLTE(*i.OrgIDLTE))
 	}
 	if i.AppID != nil {
 		predicates = append(predicates, decisionreqdef.AppIDEQ(*i.AppID))
@@ -1576,96 +1421,6 @@ func (i *DecisionReqDefWhereInput) P() (predicate.DecisionReqDef, error) {
 	if i.RevisionNotNil {
 		predicates = append(predicates, decisionreqdef.RevisionNotNil())
 	}
-	if i.ResourceName != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameEQ(*i.ResourceName))
-	}
-	if i.ResourceNameNEQ != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameNEQ(*i.ResourceNameNEQ))
-	}
-	if len(i.ResourceNameIn) > 0 {
-		predicates = append(predicates, decisionreqdef.ResourceNameIn(i.ResourceNameIn...))
-	}
-	if len(i.ResourceNameNotIn) > 0 {
-		predicates = append(predicates, decisionreqdef.ResourceNameNotIn(i.ResourceNameNotIn...))
-	}
-	if i.ResourceNameGT != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameGT(*i.ResourceNameGT))
-	}
-	if i.ResourceNameGTE != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameGTE(*i.ResourceNameGTE))
-	}
-	if i.ResourceNameLT != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameLT(*i.ResourceNameLT))
-	}
-	if i.ResourceNameLTE != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameLTE(*i.ResourceNameLTE))
-	}
-	if i.ResourceNameContains != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameContains(*i.ResourceNameContains))
-	}
-	if i.ResourceNameHasPrefix != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameHasPrefix(*i.ResourceNameHasPrefix))
-	}
-	if i.ResourceNameHasSuffix != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameHasSuffix(*i.ResourceNameHasSuffix))
-	}
-	if i.ResourceNameIsNil {
-		predicates = append(predicates, decisionreqdef.ResourceNameIsNil())
-	}
-	if i.ResourceNameNotNil {
-		predicates = append(predicates, decisionreqdef.ResourceNameNotNil())
-	}
-	if i.ResourceNameEqualFold != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameEqualFold(*i.ResourceNameEqualFold))
-	}
-	if i.ResourceNameContainsFold != nil {
-		predicates = append(predicates, decisionreqdef.ResourceNameContainsFold(*i.ResourceNameContainsFold))
-	}
-	if i.DgrmResourceName != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameEQ(*i.DgrmResourceName))
-	}
-	if i.DgrmResourceNameNEQ != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameNEQ(*i.DgrmResourceNameNEQ))
-	}
-	if len(i.DgrmResourceNameIn) > 0 {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameIn(i.DgrmResourceNameIn...))
-	}
-	if len(i.DgrmResourceNameNotIn) > 0 {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameNotIn(i.DgrmResourceNameNotIn...))
-	}
-	if i.DgrmResourceNameGT != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameGT(*i.DgrmResourceNameGT))
-	}
-	if i.DgrmResourceNameGTE != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameGTE(*i.DgrmResourceNameGTE))
-	}
-	if i.DgrmResourceNameLT != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameLT(*i.DgrmResourceNameLT))
-	}
-	if i.DgrmResourceNameLTE != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameLTE(*i.DgrmResourceNameLTE))
-	}
-	if i.DgrmResourceNameContains != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameContains(*i.DgrmResourceNameContains))
-	}
-	if i.DgrmResourceNameHasPrefix != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameHasPrefix(*i.DgrmResourceNameHasPrefix))
-	}
-	if i.DgrmResourceNameHasSuffix != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameHasSuffix(*i.DgrmResourceNameHasSuffix))
-	}
-	if i.DgrmResourceNameIsNil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameIsNil())
-	}
-	if i.DgrmResourceNameNotNil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameNotNil())
-	}
-	if i.DgrmResourceNameEqualFold != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameEqualFold(*i.DgrmResourceNameEqualFold))
-	}
-	if i.DgrmResourceNameContainsFold != nil {
-		predicates = append(predicates, decisionreqdef.DgrmResourceNameContainsFold(*i.DgrmResourceNameContainsFold))
-	}
 
 	if i.HasDeployment != nil {
 		p := decisionreqdef.HasDeployment()
@@ -1774,15 +1529,15 @@ type DeploymentWhereInput struct {
 	UpdatedAtIsNil  bool        `json:"updatedAtIsNil,omitempty"`
 	UpdatedAtNotNil bool        `json:"updatedAtNotNil,omitempty"`
 
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
 
 	// "app_id" field predicates.
 	AppID      *int  `json:"appID,omitempty"`
@@ -2050,29 +1805,29 @@ func (i *DeploymentWhereInput) P() (predicate.Deployment, error) {
 	if i.UpdatedAtNotNil {
 		predicates = append(predicates, deployment.UpdatedAtNotNil())
 	}
-	if i.OrgID != nil {
-		predicates = append(predicates, deployment.OrgIDEQ(*i.OrgID))
+	if i.TenantID != nil {
+		predicates = append(predicates, deployment.TenantIDEQ(*i.TenantID))
 	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, deployment.OrgIDNEQ(*i.OrgIDNEQ))
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, deployment.TenantIDNEQ(*i.TenantIDNEQ))
 	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, deployment.OrgIDIn(i.OrgIDIn...))
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, deployment.TenantIDIn(i.TenantIDIn...))
 	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, deployment.OrgIDNotIn(i.OrgIDNotIn...))
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, deployment.TenantIDNotIn(i.TenantIDNotIn...))
 	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, deployment.OrgIDGT(*i.OrgIDGT))
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, deployment.TenantIDGT(*i.TenantIDGT))
 	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, deployment.OrgIDGTE(*i.OrgIDGTE))
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, deployment.TenantIDGTE(*i.TenantIDGTE))
 	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, deployment.OrgIDLT(*i.OrgIDLT))
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, deployment.TenantIDLT(*i.TenantIDLT))
 	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, deployment.OrgIDLTE(*i.OrgIDLTE))
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, deployment.TenantIDLTE(*i.TenantIDLTE))
 	}
 	if i.AppID != nil {
 		predicates = append(predicates, deployment.AppIDEQ(*i.AppID))
@@ -2276,6 +2031,16 @@ type IdentityLinkWhereInput struct {
 	IDLT    *int  `json:"idLT,omitempty"`
 	IDLTE   *int  `json:"idLTE,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "task_id" field predicates.
 	TaskID      *int  `json:"taskID,omitempty"`
 	TaskIDNEQ   *int  `json:"taskIDNEQ,omitempty"`
@@ -2334,38 +2099,11 @@ type IdentityLinkWhereInput struct {
 	LinkTypeIn    []identitylink.LinkType `json:"linkTypeIn,omitempty"`
 	LinkTypeNotIn []identitylink.LinkType `json:"linkTypeNotIn,omitempty"`
 
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
-
 	// "operation_type" field predicates.
 	OperationType      *identitylink.OperationType  `json:"operationType,omitempty"`
 	OperationTypeNEQ   *identitylink.OperationType  `json:"operationTypeNEQ,omitempty"`
 	OperationTypeIn    []identitylink.OperationType `json:"operationTypeIn,omitempty"`
 	OperationTypeNotIn []identitylink.OperationType `json:"operationTypeNotIn,omitempty"`
-
-	// "comments" field predicates.
-	Comments             *string  `json:"comments,omitempty"`
-	CommentsNEQ          *string  `json:"commentsNEQ,omitempty"`
-	CommentsIn           []string `json:"commentsIn,omitempty"`
-	CommentsNotIn        []string `json:"commentsNotIn,omitempty"`
-	CommentsGT           *string  `json:"commentsGT,omitempty"`
-	CommentsGTE          *string  `json:"commentsGTE,omitempty"`
-	CommentsLT           *string  `json:"commentsLT,omitempty"`
-	CommentsLTE          *string  `json:"commentsLTE,omitempty"`
-	CommentsContains     *string  `json:"commentsContains,omitempty"`
-	CommentsHasPrefix    *string  `json:"commentsHasPrefix,omitempty"`
-	CommentsHasSuffix    *string  `json:"commentsHasSuffix,omitempty"`
-	CommentsIsNil        bool     `json:"commentsIsNil,omitempty"`
-	CommentsNotNil       bool     `json:"commentsNotNil,omitempty"`
-	CommentsEqualFold    *string  `json:"commentsEqualFold,omitempty"`
-	CommentsContainsFold *string  `json:"commentsContainsFold,omitempty"`
 
 	// "task" edge predicates.
 	HasTask     *bool             `json:"hasTask,omitempty"`
@@ -2466,6 +2204,30 @@ func (i *IdentityLinkWhereInput) P() (predicate.IdentityLink, error) {
 	}
 	if i.IDLTE != nil {
 		predicates = append(predicates, identitylink.IDLTE(*i.IDLTE))
+	}
+	if i.TenantID != nil {
+		predicates = append(predicates, identitylink.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, identitylink.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, identitylink.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, identitylink.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, identitylink.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, identitylink.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, identitylink.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, identitylink.TenantIDLTE(*i.TenantIDLTE))
 	}
 	if i.TaskID != nil {
 		predicates = append(predicates, identitylink.TaskIDEQ(*i.TaskID))
@@ -2605,30 +2367,6 @@ func (i *IdentityLinkWhereInput) P() (predicate.IdentityLink, error) {
 	if len(i.LinkTypeNotIn) > 0 {
 		predicates = append(predicates, identitylink.LinkTypeNotIn(i.LinkTypeNotIn...))
 	}
-	if i.OrgID != nil {
-		predicates = append(predicates, identitylink.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, identitylink.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, identitylink.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, identitylink.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, identitylink.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, identitylink.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, identitylink.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, identitylink.OrgIDLTE(*i.OrgIDLTE))
-	}
 	if i.OperationType != nil {
 		predicates = append(predicates, identitylink.OperationTypeEQ(*i.OperationType))
 	}
@@ -2640,51 +2378,6 @@ func (i *IdentityLinkWhereInput) P() (predicate.IdentityLink, error) {
 	}
 	if len(i.OperationTypeNotIn) > 0 {
 		predicates = append(predicates, identitylink.OperationTypeNotIn(i.OperationTypeNotIn...))
-	}
-	if i.Comments != nil {
-		predicates = append(predicates, identitylink.CommentsEQ(*i.Comments))
-	}
-	if i.CommentsNEQ != nil {
-		predicates = append(predicates, identitylink.CommentsNEQ(*i.CommentsNEQ))
-	}
-	if len(i.CommentsIn) > 0 {
-		predicates = append(predicates, identitylink.CommentsIn(i.CommentsIn...))
-	}
-	if len(i.CommentsNotIn) > 0 {
-		predicates = append(predicates, identitylink.CommentsNotIn(i.CommentsNotIn...))
-	}
-	if i.CommentsGT != nil {
-		predicates = append(predicates, identitylink.CommentsGT(*i.CommentsGT))
-	}
-	if i.CommentsGTE != nil {
-		predicates = append(predicates, identitylink.CommentsGTE(*i.CommentsGTE))
-	}
-	if i.CommentsLT != nil {
-		predicates = append(predicates, identitylink.CommentsLT(*i.CommentsLT))
-	}
-	if i.CommentsLTE != nil {
-		predicates = append(predicates, identitylink.CommentsLTE(*i.CommentsLTE))
-	}
-	if i.CommentsContains != nil {
-		predicates = append(predicates, identitylink.CommentsContains(*i.CommentsContains))
-	}
-	if i.CommentsHasPrefix != nil {
-		predicates = append(predicates, identitylink.CommentsHasPrefix(*i.CommentsHasPrefix))
-	}
-	if i.CommentsHasSuffix != nil {
-		predicates = append(predicates, identitylink.CommentsHasSuffix(*i.CommentsHasSuffix))
-	}
-	if i.CommentsIsNil {
-		predicates = append(predicates, identitylink.CommentsIsNil())
-	}
-	if i.CommentsNotNil {
-		predicates = append(predicates, identitylink.CommentsNotNil())
-	}
-	if i.CommentsEqualFold != nil {
-		predicates = append(predicates, identitylink.CommentsEqualFold(*i.CommentsEqualFold))
-	}
-	if i.CommentsContainsFold != nil {
-		predicates = append(predicates, identitylink.CommentsContainsFold(*i.CommentsContainsFold))
 	}
 
 	if i.HasTask != nil {
@@ -2712,6 +2405,524 @@ func (i *IdentityLinkWhereInput) P() (predicate.IdentityLink, error) {
 		return predicates[0], nil
 	default:
 		return identitylink.And(predicates...), nil
+	}
+}
+
+// OrgRoleWhereInput represents a where input for filtering OrgRole queries.
+type OrgRoleWhereInput struct {
+	Predicates []predicate.OrgRole  `json:"-"`
+	Not        *OrgRoleWhereInput   `json:"not,omitempty"`
+	Or         []*OrgRoleWhereInput `json:"or,omitempty"`
+	And        []*OrgRoleWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "org_id" field predicates.
+	OrgID       *int  `json:"orgID,omitempty"`
+	OrgIDNEQ    *int  `json:"orgIDNEQ,omitempty"`
+	OrgIDIn     []int `json:"orgIDIn,omitempty"`
+	OrgIDNotIn  []int `json:"orgIDNotIn,omitempty"`
+	OrgIDGT     *int  `json:"orgIDGT,omitempty"`
+	OrgIDGTE    *int  `json:"orgIDGTE,omitempty"`
+	OrgIDLT     *int  `json:"orgIDLT,omitempty"`
+	OrgIDLTE    *int  `json:"orgIDLTE,omitempty"`
+	OrgIDIsNil  bool  `json:"orgIDIsNil,omitempty"`
+	OrgIDNotNil bool  `json:"orgIDNotNil,omitempty"`
+
+	// "kind" field predicates.
+	Kind      *orgrole.Kind  `json:"kind,omitempty"`
+	KindNEQ   *orgrole.Kind  `json:"kindNEQ,omitempty"`
+	KindIn    []orgrole.Kind `json:"kindIn,omitempty"`
+	KindNotIn []orgrole.Kind `json:"kindNotIn,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *OrgRoleWhereInput) AddPredicates(predicates ...predicate.OrgRole) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the OrgRoleWhereInput filter on the OrgRoleQuery builder.
+func (i *OrgRoleWhereInput) Filter(q *OrgRoleQuery) (*OrgRoleQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyOrgRoleWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyOrgRoleWhereInput is returned in case the OrgRoleWhereInput is empty.
+var ErrEmptyOrgRoleWhereInput = errors.New("ent: empty predicate OrgRoleWhereInput")
+
+// P returns a predicate for filtering orgroles.
+// An error is returned if the input is empty or invalid.
+func (i *OrgRoleWhereInput) P() (predicate.OrgRole, error) {
+	var predicates []predicate.OrgRole
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, orgrole.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.OrgRole, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, orgrole.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.OrgRole, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, orgrole.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, orgrole.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, orgrole.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, orgrole.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, orgrole.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, orgrole.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, orgrole.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, orgrole.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, orgrole.IDLTE(*i.IDLTE))
+	}
+	if i.OrgID != nil {
+		predicates = append(predicates, orgrole.OrgIDEQ(*i.OrgID))
+	}
+	if i.OrgIDNEQ != nil {
+		predicates = append(predicates, orgrole.OrgIDNEQ(*i.OrgIDNEQ))
+	}
+	if len(i.OrgIDIn) > 0 {
+		predicates = append(predicates, orgrole.OrgIDIn(i.OrgIDIn...))
+	}
+	if len(i.OrgIDNotIn) > 0 {
+		predicates = append(predicates, orgrole.OrgIDNotIn(i.OrgIDNotIn...))
+	}
+	if i.OrgIDGT != nil {
+		predicates = append(predicates, orgrole.OrgIDGT(*i.OrgIDGT))
+	}
+	if i.OrgIDGTE != nil {
+		predicates = append(predicates, orgrole.OrgIDGTE(*i.OrgIDGTE))
+	}
+	if i.OrgIDLT != nil {
+		predicates = append(predicates, orgrole.OrgIDLT(*i.OrgIDLT))
+	}
+	if i.OrgIDLTE != nil {
+		predicates = append(predicates, orgrole.OrgIDLTE(*i.OrgIDLTE))
+	}
+	if i.OrgIDIsNil {
+		predicates = append(predicates, orgrole.OrgIDIsNil())
+	}
+	if i.OrgIDNotNil {
+		predicates = append(predicates, orgrole.OrgIDNotNil())
+	}
+	if i.Kind != nil {
+		predicates = append(predicates, orgrole.KindEQ(*i.Kind))
+	}
+	if i.KindNEQ != nil {
+		predicates = append(predicates, orgrole.KindNEQ(*i.KindNEQ))
+	}
+	if len(i.KindIn) > 0 {
+		predicates = append(predicates, orgrole.KindIn(i.KindIn...))
+	}
+	if len(i.KindNotIn) > 0 {
+		predicates = append(predicates, orgrole.KindNotIn(i.KindNotIn...))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, orgrole.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, orgrole.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, orgrole.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, orgrole.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, orgrole.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, orgrole.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, orgrole.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, orgrole.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, orgrole.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, orgrole.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, orgrole.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, orgrole.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, orgrole.NameContainsFold(*i.NameContainsFold))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyOrgRoleWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return orgrole.And(predicates...), nil
+	}
+}
+
+// OrgUserWhereInput represents a where input for filtering OrgUser queries.
+type OrgUserWhereInput struct {
+	Predicates []predicate.OrgUser  `json:"-"`
+	Not        *OrgUserWhereInput   `json:"not,omitempty"`
+	Or         []*OrgUserWhereInput `json:"or,omitempty"`
+	And        []*OrgUserWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "org_id" field predicates.
+	OrgID      *int  `json:"orgID,omitempty"`
+	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
+	OrgIDIn    []int `json:"orgIDIn,omitempty"`
+	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
+	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
+	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
+	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
+	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
+
+	// "user_id" field predicates.
+	UserID      *int  `json:"userID,omitempty"`
+	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []int `json:"userIDIn,omitempty"`
+	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+	UserIDGT    *int  `json:"userIDGT,omitempty"`
+	UserIDGTE   *int  `json:"userIDGTE,omitempty"`
+	UserIDLT    *int  `json:"userIDLT,omitempty"`
+	UserIDLTE   *int  `json:"userIDLTE,omitempty"`
+
+	// "joined_at" field predicates.
+	JoinedAt      *time.Time  `json:"joinedAt,omitempty"`
+	JoinedAtNEQ   *time.Time  `json:"joinedAtNEQ,omitempty"`
+	JoinedAtIn    []time.Time `json:"joinedAtIn,omitempty"`
+	JoinedAtNotIn []time.Time `json:"joinedAtNotIn,omitempty"`
+	JoinedAtGT    *time.Time  `json:"joinedAtGT,omitempty"`
+	JoinedAtGTE   *time.Time  `json:"joinedAtGTE,omitempty"`
+	JoinedAtLT    *time.Time  `json:"joinedAtLT,omitempty"`
+	JoinedAtLTE   *time.Time  `json:"joinedAtLTE,omitempty"`
+
+	// "display_name" field predicates.
+	DisplayName             *string  `json:"displayName,omitempty"`
+	DisplayNameNEQ          *string  `json:"displayNameNEQ,omitempty"`
+	DisplayNameIn           []string `json:"displayNameIn,omitempty"`
+	DisplayNameNotIn        []string `json:"displayNameNotIn,omitempty"`
+	DisplayNameGT           *string  `json:"displayNameGT,omitempty"`
+	DisplayNameGTE          *string  `json:"displayNameGTE,omitempty"`
+	DisplayNameLT           *string  `json:"displayNameLT,omitempty"`
+	DisplayNameLTE          *string  `json:"displayNameLTE,omitempty"`
+	DisplayNameContains     *string  `json:"displayNameContains,omitempty"`
+	DisplayNameHasPrefix    *string  `json:"displayNameHasPrefix,omitempty"`
+	DisplayNameHasSuffix    *string  `json:"displayNameHasSuffix,omitempty"`
+	DisplayNameEqualFold    *string  `json:"displayNameEqualFold,omitempty"`
+	DisplayNameContainsFold *string  `json:"displayNameContainsFold,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *OrgUserWhereInput) AddPredicates(predicates ...predicate.OrgUser) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the OrgUserWhereInput filter on the OrgUserQuery builder.
+func (i *OrgUserWhereInput) Filter(q *OrgUserQuery) (*OrgUserQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyOrgUserWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyOrgUserWhereInput is returned in case the OrgUserWhereInput is empty.
+var ErrEmptyOrgUserWhereInput = errors.New("ent: empty predicate OrgUserWhereInput")
+
+// P returns a predicate for filtering orgusers.
+// An error is returned if the input is empty or invalid.
+func (i *OrgUserWhereInput) P() (predicate.OrgUser, error) {
+	var predicates []predicate.OrgUser
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, orguser.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.OrgUser, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, orguser.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.OrgUser, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, orguser.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, orguser.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, orguser.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, orguser.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, orguser.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, orguser.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, orguser.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, orguser.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, orguser.IDLTE(*i.IDLTE))
+	}
+	if i.OrgID != nil {
+		predicates = append(predicates, orguser.OrgIDEQ(*i.OrgID))
+	}
+	if i.OrgIDNEQ != nil {
+		predicates = append(predicates, orguser.OrgIDNEQ(*i.OrgIDNEQ))
+	}
+	if len(i.OrgIDIn) > 0 {
+		predicates = append(predicates, orguser.OrgIDIn(i.OrgIDIn...))
+	}
+	if len(i.OrgIDNotIn) > 0 {
+		predicates = append(predicates, orguser.OrgIDNotIn(i.OrgIDNotIn...))
+	}
+	if i.OrgIDGT != nil {
+		predicates = append(predicates, orguser.OrgIDGT(*i.OrgIDGT))
+	}
+	if i.OrgIDGTE != nil {
+		predicates = append(predicates, orguser.OrgIDGTE(*i.OrgIDGTE))
+	}
+	if i.OrgIDLT != nil {
+		predicates = append(predicates, orguser.OrgIDLT(*i.OrgIDLT))
+	}
+	if i.OrgIDLTE != nil {
+		predicates = append(predicates, orguser.OrgIDLTE(*i.OrgIDLTE))
+	}
+	if i.UserID != nil {
+		predicates = append(predicates, orguser.UserIDEQ(*i.UserID))
+	}
+	if i.UserIDNEQ != nil {
+		predicates = append(predicates, orguser.UserIDNEQ(*i.UserIDNEQ))
+	}
+	if len(i.UserIDIn) > 0 {
+		predicates = append(predicates, orguser.UserIDIn(i.UserIDIn...))
+	}
+	if len(i.UserIDNotIn) > 0 {
+		predicates = append(predicates, orguser.UserIDNotIn(i.UserIDNotIn...))
+	}
+	if i.UserIDGT != nil {
+		predicates = append(predicates, orguser.UserIDGT(*i.UserIDGT))
+	}
+	if i.UserIDGTE != nil {
+		predicates = append(predicates, orguser.UserIDGTE(*i.UserIDGTE))
+	}
+	if i.UserIDLT != nil {
+		predicates = append(predicates, orguser.UserIDLT(*i.UserIDLT))
+	}
+	if i.UserIDLTE != nil {
+		predicates = append(predicates, orguser.UserIDLTE(*i.UserIDLTE))
+	}
+	if i.JoinedAt != nil {
+		predicates = append(predicates, orguser.JoinedAtEQ(*i.JoinedAt))
+	}
+	if i.JoinedAtNEQ != nil {
+		predicates = append(predicates, orguser.JoinedAtNEQ(*i.JoinedAtNEQ))
+	}
+	if len(i.JoinedAtIn) > 0 {
+		predicates = append(predicates, orguser.JoinedAtIn(i.JoinedAtIn...))
+	}
+	if len(i.JoinedAtNotIn) > 0 {
+		predicates = append(predicates, orguser.JoinedAtNotIn(i.JoinedAtNotIn...))
+	}
+	if i.JoinedAtGT != nil {
+		predicates = append(predicates, orguser.JoinedAtGT(*i.JoinedAtGT))
+	}
+	if i.JoinedAtGTE != nil {
+		predicates = append(predicates, orguser.JoinedAtGTE(*i.JoinedAtGTE))
+	}
+	if i.JoinedAtLT != nil {
+		predicates = append(predicates, orguser.JoinedAtLT(*i.JoinedAtLT))
+	}
+	if i.JoinedAtLTE != nil {
+		predicates = append(predicates, orguser.JoinedAtLTE(*i.JoinedAtLTE))
+	}
+	if i.DisplayName != nil {
+		predicates = append(predicates, orguser.DisplayNameEQ(*i.DisplayName))
+	}
+	if i.DisplayNameNEQ != nil {
+		predicates = append(predicates, orguser.DisplayNameNEQ(*i.DisplayNameNEQ))
+	}
+	if len(i.DisplayNameIn) > 0 {
+		predicates = append(predicates, orguser.DisplayNameIn(i.DisplayNameIn...))
+	}
+	if len(i.DisplayNameNotIn) > 0 {
+		predicates = append(predicates, orguser.DisplayNameNotIn(i.DisplayNameNotIn...))
+	}
+	if i.DisplayNameGT != nil {
+		predicates = append(predicates, orguser.DisplayNameGT(*i.DisplayNameGT))
+	}
+	if i.DisplayNameGTE != nil {
+		predicates = append(predicates, orguser.DisplayNameGTE(*i.DisplayNameGTE))
+	}
+	if i.DisplayNameLT != nil {
+		predicates = append(predicates, orguser.DisplayNameLT(*i.DisplayNameLT))
+	}
+	if i.DisplayNameLTE != nil {
+		predicates = append(predicates, orguser.DisplayNameLTE(*i.DisplayNameLTE))
+	}
+	if i.DisplayNameContains != nil {
+		predicates = append(predicates, orguser.DisplayNameContains(*i.DisplayNameContains))
+	}
+	if i.DisplayNameHasPrefix != nil {
+		predicates = append(predicates, orguser.DisplayNameHasPrefix(*i.DisplayNameHasPrefix))
+	}
+	if i.DisplayNameHasSuffix != nil {
+		predicates = append(predicates, orguser.DisplayNameHasSuffix(*i.DisplayNameHasSuffix))
+	}
+	if i.DisplayNameEqualFold != nil {
+		predicates = append(predicates, orguser.DisplayNameEqualFold(*i.DisplayNameEqualFold))
+	}
+	if i.DisplayNameContainsFold != nil {
+		predicates = append(predicates, orguser.DisplayNameContainsFold(*i.DisplayNameContainsFold))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyOrgUserWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return orguser.And(predicates...), nil
 	}
 }
 
@@ -2776,21 +2987,21 @@ type ProcDefWhereInput struct {
 	UpdatedAtIsNil  bool        `json:"updatedAtIsNil,omitempty"`
 	UpdatedAtNotNil bool        `json:"updatedAtNotNil,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "deployment_id" field predicates.
 	DeploymentID      *int  `json:"deploymentID,omitempty"`
 	DeploymentIDNEQ   *int  `json:"deploymentIDNEQ,omitempty"`
 	DeploymentIDIn    []int `json:"deploymentIDIn,omitempty"`
 	DeploymentIDNotIn []int `json:"deploymentIDNotIn,omitempty"`
-
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
 
 	// "app_id" field predicates.
 	AppID      *int  `json:"appID,omitempty"`
@@ -2892,45 +3103,11 @@ type ProcDefWhereInput struct {
 	VersionTagEqualFold    *string  `json:"versionTagEqualFold,omitempty"`
 	VersionTagContainsFold *string  `json:"versionTagContainsFold,omitempty"`
 
-	// "resource_name" field predicates.
-	ResourceName             *string  `json:"resourceName,omitempty"`
-	ResourceNameNEQ          *string  `json:"resourceNameNEQ,omitempty"`
-	ResourceNameIn           []string `json:"resourceNameIn,omitempty"`
-	ResourceNameNotIn        []string `json:"resourceNameNotIn,omitempty"`
-	ResourceNameGT           *string  `json:"resourceNameGT,omitempty"`
-	ResourceNameGTE          *string  `json:"resourceNameGTE,omitempty"`
-	ResourceNameLT           *string  `json:"resourceNameLT,omitempty"`
-	ResourceNameLTE          *string  `json:"resourceNameLTE,omitempty"`
-	ResourceNameContains     *string  `json:"resourceNameContains,omitempty"`
-	ResourceNameHasPrefix    *string  `json:"resourceNameHasPrefix,omitempty"`
-	ResourceNameHasSuffix    *string  `json:"resourceNameHasSuffix,omitempty"`
-	ResourceNameIsNil        bool     `json:"resourceNameIsNil,omitempty"`
-	ResourceNameNotNil       bool     `json:"resourceNameNotNil,omitempty"`
-	ResourceNameEqualFold    *string  `json:"resourceNameEqualFold,omitempty"`
-	ResourceNameContainsFold *string  `json:"resourceNameContainsFold,omitempty"`
-
-	// "dgrm_resource_name" field predicates.
-	DgrmResourceName             *string  `json:"dgrmResourceName,omitempty"`
-	DgrmResourceNameNEQ          *string  `json:"dgrmResourceNameNEQ,omitempty"`
-	DgrmResourceNameIn           []string `json:"dgrmResourceNameIn,omitempty"`
-	DgrmResourceNameNotIn        []string `json:"dgrmResourceNameNotIn,omitempty"`
-	DgrmResourceNameGT           *string  `json:"dgrmResourceNameGT,omitempty"`
-	DgrmResourceNameGTE          *string  `json:"dgrmResourceNameGTE,omitempty"`
-	DgrmResourceNameLT           *string  `json:"dgrmResourceNameLT,omitempty"`
-	DgrmResourceNameLTE          *string  `json:"dgrmResourceNameLTE,omitempty"`
-	DgrmResourceNameContains     *string  `json:"dgrmResourceNameContains,omitempty"`
-	DgrmResourceNameHasPrefix    *string  `json:"dgrmResourceNameHasPrefix,omitempty"`
-	DgrmResourceNameHasSuffix    *string  `json:"dgrmResourceNameHasSuffix,omitempty"`
-	DgrmResourceNameIsNil        bool     `json:"dgrmResourceNameIsNil,omitempty"`
-	DgrmResourceNameNotNil       bool     `json:"dgrmResourceNameNotNil,omitempty"`
-	DgrmResourceNameEqualFold    *string  `json:"dgrmResourceNameEqualFold,omitempty"`
-	DgrmResourceNameContainsFold *string  `json:"dgrmResourceNameContainsFold,omitempty"`
-
 	// "status" field predicates.
-	Status      *procdef.Status  `json:"status,omitempty"`
-	StatusNEQ   *procdef.Status  `json:"statusNEQ,omitempty"`
-	StatusIn    []procdef.Status `json:"statusIn,omitempty"`
-	StatusNotIn []procdef.Status `json:"statusNotIn,omitempty"`
+	Status      *typex.SimpleStatus  `json:"status,omitempty"`
+	StatusNEQ   *typex.SimpleStatus  `json:"statusNEQ,omitempty"`
+	StatusIn    []typex.SimpleStatus `json:"statusIn,omitempty"`
+	StatusNotIn []typex.SimpleStatus `json:"statusNotIn,omitempty"`
 
 	// "deployment" edge predicates.
 	HasDeployment     *bool                   `json:"hasDeployment,omitempty"`
@@ -3144,6 +3321,30 @@ func (i *ProcDefWhereInput) P() (predicate.ProcDef, error) {
 	if i.UpdatedAtNotNil {
 		predicates = append(predicates, procdef.UpdatedAtNotNil())
 	}
+	if i.TenantID != nil {
+		predicates = append(predicates, procdef.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, procdef.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, procdef.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, procdef.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, procdef.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, procdef.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, procdef.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, procdef.TenantIDLTE(*i.TenantIDLTE))
+	}
 	if i.DeploymentID != nil {
 		predicates = append(predicates, procdef.DeploymentIDEQ(*i.DeploymentID))
 	}
@@ -3155,30 +3356,6 @@ func (i *ProcDefWhereInput) P() (predicate.ProcDef, error) {
 	}
 	if len(i.DeploymentIDNotIn) > 0 {
 		predicates = append(predicates, procdef.DeploymentIDNotIn(i.DeploymentIDNotIn...))
-	}
-	if i.OrgID != nil {
-		predicates = append(predicates, procdef.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, procdef.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, procdef.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, procdef.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, procdef.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, procdef.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, procdef.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, procdef.OrgIDLTE(*i.OrgIDLTE))
 	}
 	if i.AppID != nil {
 		predicates = append(predicates, procdef.AppIDEQ(*i.AppID))
@@ -3438,96 +3615,6 @@ func (i *ProcDefWhereInput) P() (predicate.ProcDef, error) {
 	if i.VersionTagContainsFold != nil {
 		predicates = append(predicates, procdef.VersionTagContainsFold(*i.VersionTagContainsFold))
 	}
-	if i.ResourceName != nil {
-		predicates = append(predicates, procdef.ResourceNameEQ(*i.ResourceName))
-	}
-	if i.ResourceNameNEQ != nil {
-		predicates = append(predicates, procdef.ResourceNameNEQ(*i.ResourceNameNEQ))
-	}
-	if len(i.ResourceNameIn) > 0 {
-		predicates = append(predicates, procdef.ResourceNameIn(i.ResourceNameIn...))
-	}
-	if len(i.ResourceNameNotIn) > 0 {
-		predicates = append(predicates, procdef.ResourceNameNotIn(i.ResourceNameNotIn...))
-	}
-	if i.ResourceNameGT != nil {
-		predicates = append(predicates, procdef.ResourceNameGT(*i.ResourceNameGT))
-	}
-	if i.ResourceNameGTE != nil {
-		predicates = append(predicates, procdef.ResourceNameGTE(*i.ResourceNameGTE))
-	}
-	if i.ResourceNameLT != nil {
-		predicates = append(predicates, procdef.ResourceNameLT(*i.ResourceNameLT))
-	}
-	if i.ResourceNameLTE != nil {
-		predicates = append(predicates, procdef.ResourceNameLTE(*i.ResourceNameLTE))
-	}
-	if i.ResourceNameContains != nil {
-		predicates = append(predicates, procdef.ResourceNameContains(*i.ResourceNameContains))
-	}
-	if i.ResourceNameHasPrefix != nil {
-		predicates = append(predicates, procdef.ResourceNameHasPrefix(*i.ResourceNameHasPrefix))
-	}
-	if i.ResourceNameHasSuffix != nil {
-		predicates = append(predicates, procdef.ResourceNameHasSuffix(*i.ResourceNameHasSuffix))
-	}
-	if i.ResourceNameIsNil {
-		predicates = append(predicates, procdef.ResourceNameIsNil())
-	}
-	if i.ResourceNameNotNil {
-		predicates = append(predicates, procdef.ResourceNameNotNil())
-	}
-	if i.ResourceNameEqualFold != nil {
-		predicates = append(predicates, procdef.ResourceNameEqualFold(*i.ResourceNameEqualFold))
-	}
-	if i.ResourceNameContainsFold != nil {
-		predicates = append(predicates, procdef.ResourceNameContainsFold(*i.ResourceNameContainsFold))
-	}
-	if i.DgrmResourceName != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameEQ(*i.DgrmResourceName))
-	}
-	if i.DgrmResourceNameNEQ != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameNEQ(*i.DgrmResourceNameNEQ))
-	}
-	if len(i.DgrmResourceNameIn) > 0 {
-		predicates = append(predicates, procdef.DgrmResourceNameIn(i.DgrmResourceNameIn...))
-	}
-	if len(i.DgrmResourceNameNotIn) > 0 {
-		predicates = append(predicates, procdef.DgrmResourceNameNotIn(i.DgrmResourceNameNotIn...))
-	}
-	if i.DgrmResourceNameGT != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameGT(*i.DgrmResourceNameGT))
-	}
-	if i.DgrmResourceNameGTE != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameGTE(*i.DgrmResourceNameGTE))
-	}
-	if i.DgrmResourceNameLT != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameLT(*i.DgrmResourceNameLT))
-	}
-	if i.DgrmResourceNameLTE != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameLTE(*i.DgrmResourceNameLTE))
-	}
-	if i.DgrmResourceNameContains != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameContains(*i.DgrmResourceNameContains))
-	}
-	if i.DgrmResourceNameHasPrefix != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameHasPrefix(*i.DgrmResourceNameHasPrefix))
-	}
-	if i.DgrmResourceNameHasSuffix != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameHasSuffix(*i.DgrmResourceNameHasSuffix))
-	}
-	if i.DgrmResourceNameIsNil {
-		predicates = append(predicates, procdef.DgrmResourceNameIsNil())
-	}
-	if i.DgrmResourceNameNotNil {
-		predicates = append(predicates, procdef.DgrmResourceNameNotNil())
-	}
-	if i.DgrmResourceNameEqualFold != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameEqualFold(*i.DgrmResourceNameEqualFold))
-	}
-	if i.DgrmResourceNameContainsFold != nil {
-		predicates = append(predicates, procdef.DgrmResourceNameContainsFold(*i.DgrmResourceNameContainsFold))
-	}
 	if i.Status != nil {
 		predicates = append(predicates, procdef.StatusEQ(*i.Status))
 	}
@@ -3648,21 +3735,21 @@ type ProcInstWhereInput struct {
 	UpdatedAtIsNil  bool        `json:"updatedAtIsNil,omitempty"`
 	UpdatedAtNotNil bool        `json:"updatedAtNotNil,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "proc_def_id" field predicates.
 	ProcDefID      *int  `json:"procDefID,omitempty"`
 	ProcDefIDNEQ   *int  `json:"procDefIDNEQ,omitempty"`
 	ProcDefIDIn    []int `json:"procDefIDIn,omitempty"`
 	ProcDefIDNotIn []int `json:"procDefIDNotIn,omitempty"`
-
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
 
 	// "app_id" field predicates.
 	AppID      *int  `json:"appID,omitempty"`
@@ -4004,6 +4091,30 @@ func (i *ProcInstWhereInput) P() (predicate.ProcInst, error) {
 	if i.UpdatedAtNotNil {
 		predicates = append(predicates, procinst.UpdatedAtNotNil())
 	}
+	if i.TenantID != nil {
+		predicates = append(predicates, procinst.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, procinst.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, procinst.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, procinst.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, procinst.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, procinst.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, procinst.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, procinst.TenantIDLTE(*i.TenantIDLTE))
+	}
 	if i.ProcDefID != nil {
 		predicates = append(predicates, procinst.ProcDefIDEQ(*i.ProcDefID))
 	}
@@ -4015,30 +4126,6 @@ func (i *ProcInstWhereInput) P() (predicate.ProcInst, error) {
 	}
 	if len(i.ProcDefIDNotIn) > 0 {
 		predicates = append(predicates, procinst.ProcDefIDNotIn(i.ProcDefIDNotIn...))
-	}
-	if i.OrgID != nil {
-		predicates = append(predicates, procinst.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, procinst.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, procinst.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, procinst.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, procinst.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, procinst.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, procinst.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, procinst.OrgIDLTE(*i.OrgIDLTE))
 	}
 	if i.AppID != nil {
 		predicates = append(predicates, procinst.AppIDEQ(*i.AppID))
@@ -4422,6 +4509,16 @@ type TaskWhereInput struct {
 	IDLT    *int  `json:"idLT,omitempty"`
 	IDLTE   *int  `json:"idLTE,omitempty"`
 
+	// "tenant_id" field predicates.
+	TenantID      *int  `json:"tenantID,omitempty"`
+	TenantIDNEQ   *int  `json:"tenantIDNEQ,omitempty"`
+	TenantIDIn    []int `json:"tenantIDIn,omitempty"`
+	TenantIDNotIn []int `json:"tenantIDNotIn,omitempty"`
+	TenantIDGT    *int  `json:"tenantIDGT,omitempty"`
+	TenantIDGTE   *int  `json:"tenantIDGTE,omitempty"`
+	TenantIDLT    *int  `json:"tenantIDLT,omitempty"`
+	TenantIDLTE   *int  `json:"tenantIDLTE,omitempty"`
+
 	// "proc_inst_id" field predicates.
 	ProcInstID      *int  `json:"procInstID,omitempty"`
 	ProcInstIDNEQ   *int  `json:"procInstIDNEQ,omitempty"`
@@ -4497,23 +4594,6 @@ type TaskWhereInput struct {
 	ParentIDIsNil  bool  `json:"parentIDIsNil,omitempty"`
 	ParentIDNotNil bool  `json:"parentIDNotNil,omitempty"`
 
-	// "comments" field predicates.
-	Comments             *string  `json:"comments,omitempty"`
-	CommentsNEQ          *string  `json:"commentsNEQ,omitempty"`
-	CommentsIn           []string `json:"commentsIn,omitempty"`
-	CommentsNotIn        []string `json:"commentsNotIn,omitempty"`
-	CommentsGT           *string  `json:"commentsGT,omitempty"`
-	CommentsGTE          *string  `json:"commentsGTE,omitempty"`
-	CommentsLT           *string  `json:"commentsLT,omitempty"`
-	CommentsLTE          *string  `json:"commentsLTE,omitempty"`
-	CommentsContains     *string  `json:"commentsContains,omitempty"`
-	CommentsHasPrefix    *string  `json:"commentsHasPrefix,omitempty"`
-	CommentsHasSuffix    *string  `json:"commentsHasSuffix,omitempty"`
-	CommentsIsNil        bool     `json:"commentsIsNil,omitempty"`
-	CommentsNotNil       bool     `json:"commentsNotNil,omitempty"`
-	CommentsEqualFold    *string  `json:"commentsEqualFold,omitempty"`
-	CommentsContainsFold *string  `json:"commentsContainsFold,omitempty"`
-
 	// "assignee" field predicates.
 	Assignee             *string  `json:"assignee,omitempty"`
 	AssigneeNEQ          *string  `json:"assigneeNEQ,omitempty"`
@@ -4570,16 +4650,6 @@ type TaskWhereInput struct {
 	// "sequential" field predicates.
 	Sequential    *bool `json:"sequential,omitempty"`
 	SequentialNEQ *bool `json:"sequentialNEQ,omitempty"`
-
-	// "org_id" field predicates.
-	OrgID      *int  `json:"orgID,omitempty"`
-	OrgIDNEQ   *int  `json:"orgIDNEQ,omitempty"`
-	OrgIDIn    []int `json:"orgIDIn,omitempty"`
-	OrgIDNotIn []int `json:"orgIDNotIn,omitempty"`
-	OrgIDGT    *int  `json:"orgIDGT,omitempty"`
-	OrgIDGTE   *int  `json:"orgIDGTE,omitempty"`
-	OrgIDLT    *int  `json:"orgIDLT,omitempty"`
-	OrgIDLTE   *int  `json:"orgIDLTE,omitempty"`
 
 	// "created_at" field predicates.
 	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
@@ -4710,6 +4780,30 @@ func (i *TaskWhereInput) P() (predicate.Task, error) {
 	}
 	if i.IDLTE != nil {
 		predicates = append(predicates, task.IDLTE(*i.IDLTE))
+	}
+	if i.TenantID != nil {
+		predicates = append(predicates, task.TenantIDEQ(*i.TenantID))
+	}
+	if i.TenantIDNEQ != nil {
+		predicates = append(predicates, task.TenantIDNEQ(*i.TenantIDNEQ))
+	}
+	if len(i.TenantIDIn) > 0 {
+		predicates = append(predicates, task.TenantIDIn(i.TenantIDIn...))
+	}
+	if len(i.TenantIDNotIn) > 0 {
+		predicates = append(predicates, task.TenantIDNotIn(i.TenantIDNotIn...))
+	}
+	if i.TenantIDGT != nil {
+		predicates = append(predicates, task.TenantIDGT(*i.TenantIDGT))
+	}
+	if i.TenantIDGTE != nil {
+		predicates = append(predicates, task.TenantIDGTE(*i.TenantIDGTE))
+	}
+	if i.TenantIDLT != nil {
+		predicates = append(predicates, task.TenantIDLT(*i.TenantIDLT))
+	}
+	if i.TenantIDLTE != nil {
+		predicates = append(predicates, task.TenantIDLTE(*i.TenantIDLTE))
 	}
 	if i.ProcInstID != nil {
 		predicates = append(predicates, task.ProcInstIDEQ(*i.ProcInstID))
@@ -4900,51 +4994,6 @@ func (i *TaskWhereInput) P() (predicate.Task, error) {
 	if i.ParentIDNotNil {
 		predicates = append(predicates, task.ParentIDNotNil())
 	}
-	if i.Comments != nil {
-		predicates = append(predicates, task.CommentsEQ(*i.Comments))
-	}
-	if i.CommentsNEQ != nil {
-		predicates = append(predicates, task.CommentsNEQ(*i.CommentsNEQ))
-	}
-	if len(i.CommentsIn) > 0 {
-		predicates = append(predicates, task.CommentsIn(i.CommentsIn...))
-	}
-	if len(i.CommentsNotIn) > 0 {
-		predicates = append(predicates, task.CommentsNotIn(i.CommentsNotIn...))
-	}
-	if i.CommentsGT != nil {
-		predicates = append(predicates, task.CommentsGT(*i.CommentsGT))
-	}
-	if i.CommentsGTE != nil {
-		predicates = append(predicates, task.CommentsGTE(*i.CommentsGTE))
-	}
-	if i.CommentsLT != nil {
-		predicates = append(predicates, task.CommentsLT(*i.CommentsLT))
-	}
-	if i.CommentsLTE != nil {
-		predicates = append(predicates, task.CommentsLTE(*i.CommentsLTE))
-	}
-	if i.CommentsContains != nil {
-		predicates = append(predicates, task.CommentsContains(*i.CommentsContains))
-	}
-	if i.CommentsHasPrefix != nil {
-		predicates = append(predicates, task.CommentsHasPrefix(*i.CommentsHasPrefix))
-	}
-	if i.CommentsHasSuffix != nil {
-		predicates = append(predicates, task.CommentsHasSuffix(*i.CommentsHasSuffix))
-	}
-	if i.CommentsIsNil {
-		predicates = append(predicates, task.CommentsIsNil())
-	}
-	if i.CommentsNotNil {
-		predicates = append(predicates, task.CommentsNotNil())
-	}
-	if i.CommentsEqualFold != nil {
-		predicates = append(predicates, task.CommentsEqualFold(*i.CommentsEqualFold))
-	}
-	if i.CommentsContainsFold != nil {
-		predicates = append(predicates, task.CommentsContainsFold(*i.CommentsContainsFold))
-	}
 	if i.Assignee != nil {
 		predicates = append(predicates, task.AssigneeEQ(*i.Assignee))
 	}
@@ -5079,30 +5128,6 @@ func (i *TaskWhereInput) P() (predicate.Task, error) {
 	}
 	if i.SequentialNEQ != nil {
 		predicates = append(predicates, task.SequentialNEQ(*i.SequentialNEQ))
-	}
-	if i.OrgID != nil {
-		predicates = append(predicates, task.OrgIDEQ(*i.OrgID))
-	}
-	if i.OrgIDNEQ != nil {
-		predicates = append(predicates, task.OrgIDNEQ(*i.OrgIDNEQ))
-	}
-	if len(i.OrgIDIn) > 0 {
-		predicates = append(predicates, task.OrgIDIn(i.OrgIDIn...))
-	}
-	if len(i.OrgIDNotIn) > 0 {
-		predicates = append(predicates, task.OrgIDNotIn(i.OrgIDNotIn...))
-	}
-	if i.OrgIDGT != nil {
-		predicates = append(predicates, task.OrgIDGT(*i.OrgIDGT))
-	}
-	if i.OrgIDGTE != nil {
-		predicates = append(predicates, task.OrgIDGTE(*i.OrgIDGTE))
-	}
-	if i.OrgIDLT != nil {
-		predicates = append(predicates, task.OrgIDLT(*i.OrgIDLT))
-	}
-	if i.OrgIDLTE != nil {
-		predicates = append(predicates, task.OrgIDLTE(*i.OrgIDLTE))
 	}
 	if i.CreatedAt != nil {
 		predicates = append(predicates, task.CreatedAtEQ(*i.CreatedAt))

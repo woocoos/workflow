@@ -10,8 +10,16 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/woocoos/entco/pkg/pagination"
+	"github.com/woocoos/workflow/ent/decisiondef"
+	"github.com/woocoos/workflow/ent/decisionreqdef"
+	"github.com/woocoos/workflow/ent/deployment"
+	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orgrole"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
+	"github.com/woocoos/workflow/ent/task"
 )
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
@@ -26,9 +34,14 @@ func (dd *DecisionDefQuery) CollectFields(ctx context.Context, satisfies ...stri
 	return dd, nil
 }
 
-func (dd *DecisionDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (dd *DecisionDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(decisiondef.Columns))
+		selectedFields = []string{decisiondef.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "reqDef":
 			var (
@@ -36,11 +49,97 @@ func (dd *DecisionDefQuery) collectField(ctx context.Context, opCtx *graphql.Ope
 				path  = append(path, alias)
 				query = (&DecisionReqDefClient{config: dd.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, decisionreqdefImplementors)...); err != nil {
 				return err
 			}
 			dd.withReqDef = query
+			if _, ok := fieldSeen[decisiondef.FieldReqDefID]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldReqDefID)
+				fieldSeen[decisiondef.FieldReqDefID] = struct{}{}
+			}
+		case "createdBy":
+			if _, ok := fieldSeen[decisiondef.FieldCreatedBy]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldCreatedBy)
+				fieldSeen[decisiondef.FieldCreatedBy] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[decisiondef.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldCreatedAt)
+				fieldSeen[decisiondef.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedBy":
+			if _, ok := fieldSeen[decisiondef.FieldUpdatedBy]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldUpdatedBy)
+				fieldSeen[decisiondef.FieldUpdatedBy] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[decisiondef.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldUpdatedAt)
+				fieldSeen[decisiondef.FieldUpdatedAt] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[decisiondef.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldTenantID)
+				fieldSeen[decisiondef.FieldTenantID] = struct{}{}
+			}
+		case "deploymentID":
+			if _, ok := fieldSeen[decisiondef.FieldDeploymentID]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldDeploymentID)
+				fieldSeen[decisiondef.FieldDeploymentID] = struct{}{}
+			}
+		case "appID":
+			if _, ok := fieldSeen[decisiondef.FieldAppID]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldAppID)
+				fieldSeen[decisiondef.FieldAppID] = struct{}{}
+			}
+		case "reqDefID":
+			if _, ok := fieldSeen[decisiondef.FieldReqDefID]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldReqDefID)
+				fieldSeen[decisiondef.FieldReqDefID] = struct{}{}
+			}
+		case "category":
+			if _, ok := fieldSeen[decisiondef.FieldCategory]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldCategory)
+				fieldSeen[decisiondef.FieldCategory] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[decisiondef.FieldName]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldName)
+				fieldSeen[decisiondef.FieldName] = struct{}{}
+			}
+		case "key":
+			if _, ok := fieldSeen[decisiondef.FieldKey]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldKey)
+				fieldSeen[decisiondef.FieldKey] = struct{}{}
+			}
+		case "reqDefKey":
+			if _, ok := fieldSeen[decisiondef.FieldReqDefKey]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldReqDefKey)
+				fieldSeen[decisiondef.FieldReqDefKey] = struct{}{}
+			}
+		case "version":
+			if _, ok := fieldSeen[decisiondef.FieldVersion]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldVersion)
+				fieldSeen[decisiondef.FieldVersion] = struct{}{}
+			}
+		case "revision":
+			if _, ok := fieldSeen[decisiondef.FieldRevision]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldRevision)
+				fieldSeen[decisiondef.FieldRevision] = struct{}{}
+			}
+		case "versionTag":
+			if _, ok := fieldSeen[decisiondef.FieldVersionTag]; !ok {
+				selectedFields = append(selectedFields, decisiondef.FieldVersionTag)
+				fieldSeen[decisiondef.FieldVersionTag] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		dd.Select(selectedFields...)
 	}
 	return nil
 }
@@ -51,7 +150,7 @@ type decisiondefPaginateArgs struct {
 	opts          []DecisionDefPaginateOption
 }
 
-func newDecisionDefPaginateArgs(rv map[string]interface{}) *decisiondefPaginateArgs {
+func newDecisionDefPaginateArgs(rv map[string]any) *decisiondefPaginateArgs {
 	args := &decisiondefPaginateArgs{}
 	if rv == nil {
 		return args
@@ -70,7 +169,7 @@ func newDecisionDefPaginateArgs(rv map[string]interface{}) *decisiondefPaginateA
 	}
 	if v, ok := rv[orderByField]; ok {
 		switch v := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var (
 				err1, err2 error
 				order      = &DecisionDefOrder{Field: &DecisionDefOrderField{}, Direction: entgql.OrderDirectionAsc}
@@ -108,9 +207,14 @@ func (drd *DecisionReqDefQuery) CollectFields(ctx context.Context, satisfies ...
 	return drd, nil
 }
 
-func (drd *DecisionReqDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (drd *DecisionReqDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(decisionreqdef.Columns))
+		selectedFields = []string{decisionreqdef.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "deployment":
 			var (
@@ -118,23 +222,104 @@ func (drd *DecisionReqDefQuery) collectField(ctx context.Context, opCtx *graphql
 				path  = append(path, alias)
 				query = (&DeploymentClient{config: drd.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, deploymentImplementors)...); err != nil {
 				return err
 			}
 			drd.withDeployment = query
+			if _, ok := fieldSeen[decisionreqdef.FieldDeploymentID]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldDeploymentID)
+				fieldSeen[decisionreqdef.FieldDeploymentID] = struct{}{}
+			}
 		case "decisionDefs":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
 				query = (&DecisionDefClient{config: drd.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, decisiondefImplementors)...); err != nil {
 				return err
 			}
 			drd.WithNamedDecisionDefs(alias, func(wq *DecisionDefQuery) {
 				*wq = *query
 			})
+		case "createdBy":
+			if _, ok := fieldSeen[decisionreqdef.FieldCreatedBy]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldCreatedBy)
+				fieldSeen[decisionreqdef.FieldCreatedBy] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[decisionreqdef.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldCreatedAt)
+				fieldSeen[decisionreqdef.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedBy":
+			if _, ok := fieldSeen[decisionreqdef.FieldUpdatedBy]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldUpdatedBy)
+				fieldSeen[decisionreqdef.FieldUpdatedBy] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[decisionreqdef.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldUpdatedAt)
+				fieldSeen[decisionreqdef.FieldUpdatedAt] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[decisionreqdef.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldTenantID)
+				fieldSeen[decisionreqdef.FieldTenantID] = struct{}{}
+			}
+		case "deploymentID":
+			if _, ok := fieldSeen[decisionreqdef.FieldDeploymentID]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldDeploymentID)
+				fieldSeen[decisionreqdef.FieldDeploymentID] = struct{}{}
+			}
+		case "appID":
+			if _, ok := fieldSeen[decisionreqdef.FieldAppID]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldAppID)
+				fieldSeen[decisionreqdef.FieldAppID] = struct{}{}
+			}
+		case "category":
+			if _, ok := fieldSeen[decisionreqdef.FieldCategory]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldCategory)
+				fieldSeen[decisionreqdef.FieldCategory] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[decisionreqdef.FieldName]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldName)
+				fieldSeen[decisionreqdef.FieldName] = struct{}{}
+			}
+		case "key":
+			if _, ok := fieldSeen[decisionreqdef.FieldKey]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldKey)
+				fieldSeen[decisionreqdef.FieldKey] = struct{}{}
+			}
+		case "version":
+			if _, ok := fieldSeen[decisionreqdef.FieldVersion]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldVersion)
+				fieldSeen[decisionreqdef.FieldVersion] = struct{}{}
+			}
+		case "revision":
+			if _, ok := fieldSeen[decisionreqdef.FieldRevision]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldRevision)
+				fieldSeen[decisionreqdef.FieldRevision] = struct{}{}
+			}
+		case "resourceKey":
+			if _, ok := fieldSeen[decisionreqdef.FieldResourceKey]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldResourceKey)
+				fieldSeen[decisionreqdef.FieldResourceKey] = struct{}{}
+			}
+		case "resourceID":
+			if _, ok := fieldSeen[decisionreqdef.FieldResourceID]; !ok {
+				selectedFields = append(selectedFields, decisionreqdef.FieldResourceID)
+				fieldSeen[decisionreqdef.FieldResourceID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		drd.Select(selectedFields...)
 	}
 	return nil
 }
@@ -145,7 +330,7 @@ type decisionreqdefPaginateArgs struct {
 	opts          []DecisionReqDefPaginateOption
 }
 
-func newDecisionReqDefPaginateArgs(rv map[string]interface{}) *decisionreqdefPaginateArgs {
+func newDecisionReqDefPaginateArgs(rv map[string]any) *decisionreqdefPaginateArgs {
 	args := &decisionreqdefPaginateArgs{}
 	if rv == nil {
 		return args
@@ -164,7 +349,7 @@ func newDecisionReqDefPaginateArgs(rv map[string]interface{}) *decisionreqdefPag
 	}
 	if v, ok := rv[orderByField]; ok {
 		switch v := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var (
 				err1, err2 error
 				order      = &DecisionReqDefOrder{Field: &DecisionReqDefOrderField{}, Direction: entgql.OrderDirectionAsc}
@@ -202,9 +387,14 @@ func (d *DeploymentQuery) CollectFields(ctx context.Context, satisfies ...string
 	return d, nil
 }
 
-func (d *DeploymentQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (d *DeploymentQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(deployment.Columns))
+		selectedFields = []string{deployment.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "procDefs":
 			var (
@@ -212,7 +402,7 @@ func (d *DeploymentQuery) collectField(ctx context.Context, opCtx *graphql.Opera
 				path  = append(path, alias)
 				query = (&ProcDefClient{config: d.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, procdefImplementors)...); err != nil {
 				return err
 			}
 			d.WithNamedProcDefs(alias, func(wq *ProcDefQuery) {
@@ -224,13 +414,65 @@ func (d *DeploymentQuery) collectField(ctx context.Context, opCtx *graphql.Opera
 				path  = append(path, alias)
 				query = (&DecisionReqDefClient{config: d.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, decisionreqdefImplementors)...); err != nil {
 				return err
 			}
 			d.WithNamedDecisionReqs(alias, func(wq *DecisionReqDefQuery) {
 				*wq = *query
 			})
+		case "createdBy":
+			if _, ok := fieldSeen[deployment.FieldCreatedBy]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldCreatedBy)
+				fieldSeen[deployment.FieldCreatedBy] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[deployment.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldCreatedAt)
+				fieldSeen[deployment.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedBy":
+			if _, ok := fieldSeen[deployment.FieldUpdatedBy]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldUpdatedBy)
+				fieldSeen[deployment.FieldUpdatedBy] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[deployment.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldUpdatedAt)
+				fieldSeen[deployment.FieldUpdatedAt] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[deployment.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldTenantID)
+				fieldSeen[deployment.FieldTenantID] = struct{}{}
+			}
+		case "appID":
+			if _, ok := fieldSeen[deployment.FieldAppID]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldAppID)
+				fieldSeen[deployment.FieldAppID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[deployment.FieldName]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldName)
+				fieldSeen[deployment.FieldName] = struct{}{}
+			}
+		case "source":
+			if _, ok := fieldSeen[deployment.FieldSource]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldSource)
+				fieldSeen[deployment.FieldSource] = struct{}{}
+			}
+		case "deployTime":
+			if _, ok := fieldSeen[deployment.FieldDeployTime]; !ok {
+				selectedFields = append(selectedFields, deployment.FieldDeployTime)
+				fieldSeen[deployment.FieldDeployTime] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		d.Select(selectedFields...)
 	}
 	return nil
 }
@@ -241,7 +483,7 @@ type deploymentPaginateArgs struct {
 	opts          []DeploymentPaginateOption
 }
 
-func newDeploymentPaginateArgs(rv map[string]interface{}) *deploymentPaginateArgs {
+func newDeploymentPaginateArgs(rv map[string]any) *deploymentPaginateArgs {
 	args := &deploymentPaginateArgs{}
 	if rv == nil {
 		return args
@@ -260,7 +502,7 @@ func newDeploymentPaginateArgs(rv map[string]interface{}) *deploymentPaginateArg
 	}
 	if v, ok := rv[orderByField]; ok {
 		switch v := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var (
 				err1, err2 error
 				order      = &DeploymentOrder{Field: &DeploymentOrderField{}, Direction: entgql.OrderDirectionAsc}
@@ -298,9 +540,14 @@ func (il *IdentityLinkQuery) CollectFields(ctx context.Context, satisfies ...str
 	return il, nil
 }
 
-func (il *IdentityLinkQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (il *IdentityLinkQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(identitylink.Columns))
+		selectedFields = []string{identitylink.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "task":
 			var (
@@ -308,11 +555,67 @@ func (il *IdentityLinkQuery) collectField(ctx context.Context, opCtx *graphql.Op
 				path  = append(path, alias)
 				query = (&TaskClient{config: il.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, taskImplementors)...); err != nil {
 				return err
 			}
 			il.withTask = query
+			if _, ok := fieldSeen[identitylink.FieldTaskID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldTaskID)
+				fieldSeen[identitylink.FieldTaskID] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[identitylink.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldTenantID)
+				fieldSeen[identitylink.FieldTenantID] = struct{}{}
+			}
+		case "taskID":
+			if _, ok := fieldSeen[identitylink.FieldTaskID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldTaskID)
+				fieldSeen[identitylink.FieldTaskID] = struct{}{}
+			}
+		case "procDefID":
+			if _, ok := fieldSeen[identitylink.FieldProcDefID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldProcDefID)
+				fieldSeen[identitylink.FieldProcDefID] = struct{}{}
+			}
+		case "groupID":
+			if _, ok := fieldSeen[identitylink.FieldGroupID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldGroupID)
+				fieldSeen[identitylink.FieldGroupID] = struct{}{}
+			}
+		case "userID":
+			if _, ok := fieldSeen[identitylink.FieldUserID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldUserID)
+				fieldSeen[identitylink.FieldUserID] = struct{}{}
+			}
+		case "assignerID":
+			if _, ok := fieldSeen[identitylink.FieldAssignerID]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldAssignerID)
+				fieldSeen[identitylink.FieldAssignerID] = struct{}{}
+			}
+		case "linkType":
+			if _, ok := fieldSeen[identitylink.FieldLinkType]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldLinkType)
+				fieldSeen[identitylink.FieldLinkType] = struct{}{}
+			}
+		case "operationType":
+			if _, ok := fieldSeen[identitylink.FieldOperationType]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldOperationType)
+				fieldSeen[identitylink.FieldOperationType] = struct{}{}
+			}
+		case "comments":
+			if _, ok := fieldSeen[identitylink.FieldComments]; !ok {
+				selectedFields = append(selectedFields, identitylink.FieldComments)
+				fieldSeen[identitylink.FieldComments] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		il.Select(selectedFields...)
 	}
 	return nil
 }
@@ -323,7 +626,7 @@ type identitylinkPaginateArgs struct {
 	opts          []IdentityLinkPaginateOption
 }
 
-func newIdentityLinkPaginateArgs(rv map[string]interface{}) *identitylinkPaginateArgs {
+func newIdentityLinkPaginateArgs(rv map[string]any) *identitylinkPaginateArgs {
 	args := &identitylinkPaginateArgs{}
 	if rv == nil {
 		return args
@@ -347,6 +650,165 @@ func newIdentityLinkPaginateArgs(rv map[string]interface{}) *identitylinkPaginat
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (or *OrgRoleQuery) CollectFields(ctx context.Context, satisfies ...string) (*OrgRoleQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return or, nil
+	}
+	if err := or.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return or, nil
+}
+
+func (or *OrgRoleQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(orgrole.Columns))
+		selectedFields = []string{orgrole.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "orgID":
+			if _, ok := fieldSeen[orgrole.FieldOrgID]; !ok {
+				selectedFields = append(selectedFields, orgrole.FieldOrgID)
+				fieldSeen[orgrole.FieldOrgID] = struct{}{}
+			}
+		case "kind":
+			if _, ok := fieldSeen[orgrole.FieldKind]; !ok {
+				selectedFields = append(selectedFields, orgrole.FieldKind)
+				fieldSeen[orgrole.FieldKind] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[orgrole.FieldName]; !ok {
+				selectedFields = append(selectedFields, orgrole.FieldName)
+				fieldSeen[orgrole.FieldName] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		or.Select(selectedFields...)
+	}
+	return nil
+}
+
+type orgrolePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []OrgRolePaginateOption
+}
+
+func newOrgRolePaginateArgs(rv map[string]any) *orgrolePaginateArgs {
+	args := &orgrolePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*OrgRoleWhereInput); ok {
+		args.opts = append(args.opts, WithOrgRoleFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (ou *OrgUserQuery) CollectFields(ctx context.Context, satisfies ...string) (*OrgUserQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return ou, nil
+	}
+	if err := ou.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return ou, nil
+}
+
+func (ou *OrgUserQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(orguser.Columns))
+		selectedFields = []string{orguser.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "orgID":
+			if _, ok := fieldSeen[orguser.FieldOrgID]; !ok {
+				selectedFields = append(selectedFields, orguser.FieldOrgID)
+				fieldSeen[orguser.FieldOrgID] = struct{}{}
+			}
+		case "userID":
+			if _, ok := fieldSeen[orguser.FieldUserID]; !ok {
+				selectedFields = append(selectedFields, orguser.FieldUserID)
+				fieldSeen[orguser.FieldUserID] = struct{}{}
+			}
+		case "joinedAt":
+			if _, ok := fieldSeen[orguser.FieldJoinedAt]; !ok {
+				selectedFields = append(selectedFields, orguser.FieldJoinedAt)
+				fieldSeen[orguser.FieldJoinedAt] = struct{}{}
+			}
+		case "displayName":
+			if _, ok := fieldSeen[orguser.FieldDisplayName]; !ok {
+				selectedFields = append(selectedFields, orguser.FieldDisplayName)
+				fieldSeen[orguser.FieldDisplayName] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		ou.Select(selectedFields...)
+	}
+	return nil
+}
+
+type orguserPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []OrgUserPaginateOption
+}
+
+func newOrgUserPaginateArgs(rv map[string]any) *orguserPaginateArgs {
+	args := &orguserPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*OrgUserWhereInput); ok {
+		args.opts = append(args.opts, WithOrgUserFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (pd *ProcDefQuery) CollectFields(ctx context.Context, satisfies ...string) (*ProcDefQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -358,9 +820,14 @@ func (pd *ProcDefQuery) CollectFields(ctx context.Context, satisfies ...string) 
 	return pd, nil
 }
 
-func (pd *ProcDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (pd *ProcDefQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(procdef.Columns))
+		selectedFields = []string{procdef.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "deployment":
 			var (
@@ -368,10 +835,14 @@ func (pd *ProcDefQuery) collectField(ctx context.Context, opCtx *graphql.Operati
 				path  = append(path, alias)
 				query = (&DeploymentClient{config: pd.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, deploymentImplementors)...); err != nil {
 				return err
 			}
 			pd.withDeployment = query
+			if _, ok := fieldSeen[procdef.FieldDeploymentID]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldDeploymentID)
+				fieldSeen[procdef.FieldDeploymentID] = struct{}{}
+			}
 		case "procInstances":
 			var (
 				alias = field.Alias
@@ -404,7 +875,7 @@ func (pd *ProcDefQuery) collectField(ctx context.Context, opCtx *graphql.Operati
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							s.Where(sql.InValues(procdef.ProcInstancesColumn, ids...))
+							s.Where(sql.InValues(s.C(procdef.ProcInstancesColumn), ids...))
 						})
 						if err := query.GroupBy(procdef.ProcInstancesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
@@ -438,26 +909,112 @@ func (pd *ProcDefQuery) collectField(ctx context.Context, opCtx *graphql.Operati
 			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
 				continue
 			}
-
 			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
 				return err
 			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, opCtx, *field, path, mayAddCondition(satisfies, procinstImplementors)...); err != nil {
+					return err
+				}
+			}
 			if limit := paginateLimit(args.first, args.last); limit > 0 {
-				modify := limitRows(procdef.ProcInstancesColumn, limit, pager.orderExpr())
+				modify := limitRows(ctx, procdef.ProcInstancesColumn, limit, args.first, args.last, pager.orderExpr(query))
 				query.modifiers = append(query.modifiers, modify)
 			} else {
 				query = pager.applyOrder(query)
 			}
-			path = append(path, edgesField, nodeField)
-			if field := collectedField(ctx, path...); field != nil {
-				if err := query.collectField(ctx, opCtx, *field, path, satisfies...); err != nil {
-					return err
-				}
-			}
 			pd.WithNamedProcInstances(alias, func(wq *ProcInstQuery) {
 				*wq = *query
 			})
+		case "createdBy":
+			if _, ok := fieldSeen[procdef.FieldCreatedBy]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldCreatedBy)
+				fieldSeen[procdef.FieldCreatedBy] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[procdef.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldCreatedAt)
+				fieldSeen[procdef.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedBy":
+			if _, ok := fieldSeen[procdef.FieldUpdatedBy]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldUpdatedBy)
+				fieldSeen[procdef.FieldUpdatedBy] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[procdef.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldUpdatedAt)
+				fieldSeen[procdef.FieldUpdatedAt] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[procdef.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldTenantID)
+				fieldSeen[procdef.FieldTenantID] = struct{}{}
+			}
+		case "deploymentID":
+			if _, ok := fieldSeen[procdef.FieldDeploymentID]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldDeploymentID)
+				fieldSeen[procdef.FieldDeploymentID] = struct{}{}
+			}
+		case "appID":
+			if _, ok := fieldSeen[procdef.FieldAppID]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldAppID)
+				fieldSeen[procdef.FieldAppID] = struct{}{}
+			}
+		case "category":
+			if _, ok := fieldSeen[procdef.FieldCategory]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldCategory)
+				fieldSeen[procdef.FieldCategory] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[procdef.FieldName]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldName)
+				fieldSeen[procdef.FieldName] = struct{}{}
+			}
+		case "key":
+			if _, ok := fieldSeen[procdef.FieldKey]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldKey)
+				fieldSeen[procdef.FieldKey] = struct{}{}
+			}
+		case "version":
+			if _, ok := fieldSeen[procdef.FieldVersion]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldVersion)
+				fieldSeen[procdef.FieldVersion] = struct{}{}
+			}
+		case "revision":
+			if _, ok := fieldSeen[procdef.FieldRevision]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldRevision)
+				fieldSeen[procdef.FieldRevision] = struct{}{}
+			}
+		case "versionTag":
+			if _, ok := fieldSeen[procdef.FieldVersionTag]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldVersionTag)
+				fieldSeen[procdef.FieldVersionTag] = struct{}{}
+			}
+		case "resourceKey":
+			if _, ok := fieldSeen[procdef.FieldResourceKey]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldResourceKey)
+				fieldSeen[procdef.FieldResourceKey] = struct{}{}
+			}
+		case "resourceID":
+			if _, ok := fieldSeen[procdef.FieldResourceID]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldResourceID)
+				fieldSeen[procdef.FieldResourceID] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[procdef.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, procdef.FieldStatus)
+				fieldSeen[procdef.FieldStatus] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		pd.Select(selectedFields...)
 	}
 	return nil
 }
@@ -468,7 +1025,7 @@ type procdefPaginateArgs struct {
 	opts          []ProcDefPaginateOption
 }
 
-func newProcDefPaginateArgs(rv map[string]interface{}) *procdefPaginateArgs {
+func newProcDefPaginateArgs(rv map[string]any) *procdefPaginateArgs {
 	args := &procdefPaginateArgs{}
 	if rv == nil {
 		return args
@@ -487,7 +1044,7 @@ func newProcDefPaginateArgs(rv map[string]interface{}) *procdefPaginateArgs {
 	}
 	if v, ok := rv[orderByField]; ok {
 		switch v := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var (
 				err1, err2 error
 				order      = &ProcDefOrder{Field: &ProcDefOrderField{}, Direction: entgql.OrderDirectionAsc}
@@ -525,9 +1082,14 @@ func (pi *ProcInstQuery) CollectFields(ctx context.Context, satisfies ...string)
 	return pi, nil
 }
 
-func (pi *ProcInstQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (pi *ProcInstQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(procinst.Columns))
+		selectedFields = []string{procinst.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "procDef":
 			var (
@@ -535,10 +1097,14 @@ func (pi *ProcInstQuery) collectField(ctx context.Context, opCtx *graphql.Operat
 				path  = append(path, alias)
 				query = (&ProcDefClient{config: pi.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, procdefImplementors)...); err != nil {
 				return err
 			}
 			pi.withProcDef = query
+			if _, ok := fieldSeen[procinst.FieldProcDefID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldProcDefID)
+				fieldSeen[procinst.FieldProcDefID] = struct{}{}
+			}
 		case "tasks":
 			var (
 				alias = field.Alias
@@ -571,7 +1137,7 @@ func (pi *ProcInstQuery) collectField(ctx context.Context, opCtx *graphql.Operat
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							s.Where(sql.InValues(procinst.TasksColumn, ids...))
+							s.Where(sql.InValues(s.C(procinst.TasksColumn), ids...))
 						})
 						if err := query.GroupBy(procinst.TasksColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
@@ -605,26 +1171,117 @@ func (pi *ProcInstQuery) collectField(ctx context.Context, opCtx *graphql.Operat
 			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
 				continue
 			}
-
 			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
 				return err
 			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, opCtx, *field, path, mayAddCondition(satisfies, taskImplementors)...); err != nil {
+					return err
+				}
+			}
 			if limit := paginateLimit(args.first, args.last); limit > 0 {
-				modify := limitRows(procinst.TasksColumn, limit, pager.orderExpr())
+				modify := limitRows(ctx, procinst.TasksColumn, limit, args.first, args.last, pager.orderExpr(query))
 				query.modifiers = append(query.modifiers, modify)
 			} else {
 				query = pager.applyOrder(query)
 			}
-			path = append(path, edgesField, nodeField)
-			if field := collectedField(ctx, path...); field != nil {
-				if err := query.collectField(ctx, opCtx, *field, path, satisfies...); err != nil {
-					return err
-				}
-			}
 			pi.WithNamedTasks(alias, func(wq *TaskQuery) {
 				*wq = *query
 			})
+		case "createdBy":
+			if _, ok := fieldSeen[procinst.FieldCreatedBy]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldCreatedBy)
+				fieldSeen[procinst.FieldCreatedBy] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[procinst.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldCreatedAt)
+				fieldSeen[procinst.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedBy":
+			if _, ok := fieldSeen[procinst.FieldUpdatedBy]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldUpdatedBy)
+				fieldSeen[procinst.FieldUpdatedBy] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[procinst.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldUpdatedAt)
+				fieldSeen[procinst.FieldUpdatedAt] = struct{}{}
+			}
+		case "tenantID":
+			if _, ok := fieldSeen[procinst.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldTenantID)
+				fieldSeen[procinst.FieldTenantID] = struct{}{}
+			}
+		case "procDefID":
+			if _, ok := fieldSeen[procinst.FieldProcDefID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldProcDefID)
+				fieldSeen[procinst.FieldProcDefID] = struct{}{}
+			}
+		case "appID":
+			if _, ok := fieldSeen[procinst.FieldAppID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldAppID)
+				fieldSeen[procinst.FieldAppID] = struct{}{}
+			}
+		case "businessKey":
+			if _, ok := fieldSeen[procinst.FieldBusinessKey]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldBusinessKey)
+				fieldSeen[procinst.FieldBusinessKey] = struct{}{}
+			}
+		case "startTime":
+			if _, ok := fieldSeen[procinst.FieldStartTime]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldStartTime)
+				fieldSeen[procinst.FieldStartTime] = struct{}{}
+			}
+		case "endTime":
+			if _, ok := fieldSeen[procinst.FieldEndTime]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldEndTime)
+				fieldSeen[procinst.FieldEndTime] = struct{}{}
+			}
+		case "duration":
+			if _, ok := fieldSeen[procinst.FieldDuration]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldDuration)
+				fieldSeen[procinst.FieldDuration] = struct{}{}
+			}
+		case "startUserID":
+			if _, ok := fieldSeen[procinst.FieldStartUserID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldStartUserID)
+				fieldSeen[procinst.FieldStartUserID] = struct{}{}
+			}
+		case "supperInstanceID":
+			if _, ok := fieldSeen[procinst.FieldSupperInstanceID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldSupperInstanceID)
+				fieldSeen[procinst.FieldSupperInstanceID] = struct{}{}
+			}
+		case "rootInstanceID":
+			if _, ok := fieldSeen[procinst.FieldRootInstanceID]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldRootInstanceID)
+				fieldSeen[procinst.FieldRootInstanceID] = struct{}{}
+			}
+		case "deletedTime":
+			if _, ok := fieldSeen[procinst.FieldDeletedTime]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldDeletedTime)
+				fieldSeen[procinst.FieldDeletedTime] = struct{}{}
+			}
+		case "deletedReason":
+			if _, ok := fieldSeen[procinst.FieldDeletedReason]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldDeletedReason)
+				fieldSeen[procinst.FieldDeletedReason] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[procinst.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, procinst.FieldStatus)
+				fieldSeen[procinst.FieldStatus] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		pi.Select(selectedFields...)
 	}
 	return nil
 }
@@ -635,7 +1292,7 @@ type procinstPaginateArgs struct {
 	opts          []ProcInstPaginateOption
 }
 
-func newProcInstPaginateArgs(rv map[string]interface{}) *procinstPaginateArgs {
+func newProcInstPaginateArgs(rv map[string]any) *procinstPaginateArgs {
 	args := &procinstPaginateArgs{}
 	if rv == nil {
 		return args
@@ -654,7 +1311,7 @@ func newProcInstPaginateArgs(rv map[string]interface{}) *procinstPaginateArgs {
 	}
 	if v, ok := rv[orderByField]; ok {
 		switch v := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			var (
 				err1, err2 error
 				order      = &ProcInstOrder{Field: &ProcInstOrderField{}, Direction: entgql.OrderDirectionAsc}
@@ -692,9 +1349,14 @@ func (t *TaskQuery) CollectFields(ctx context.Context, satisfies ...string) (*Ta
 	return t, nil
 }
 
-func (t *TaskQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+func (t *TaskQuery) collectField(ctx context.Context, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
 	path = append([]string(nil), path...)
-	for _, field := range graphql.CollectFields(opCtx, field.Selections, satisfies) {
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(task.Columns))
+		selectedFields = []string{task.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
 		case "procInst":
 			var (
@@ -702,23 +1364,119 @@ func (t *TaskQuery) collectField(ctx context.Context, opCtx *graphql.OperationCo
 				path  = append(path, alias)
 				query = (&ProcInstClient{config: t.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, procinstImplementors)...); err != nil {
 				return err
 			}
 			t.withProcInst = query
+			if _, ok := fieldSeen[task.FieldProcInstID]; !ok {
+				selectedFields = append(selectedFields, task.FieldProcInstID)
+				fieldSeen[task.FieldProcInstID] = struct{}{}
+			}
 		case "taskIdentities":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
 				query = (&IdentityLinkClient{config: t.config}).Query()
 			)
-			if err := query.collectField(ctx, opCtx, field, path, satisfies...); err != nil {
+			if err := query.collectField(ctx, opCtx, field, path, mayAddCondition(satisfies, identitylinkImplementors)...); err != nil {
 				return err
 			}
 			t.WithNamedTaskIdentities(alias, func(wq *IdentityLinkQuery) {
 				*wq = *query
 			})
+		case "tenantID":
+			if _, ok := fieldSeen[task.FieldTenantID]; !ok {
+				selectedFields = append(selectedFields, task.FieldTenantID)
+				fieldSeen[task.FieldTenantID] = struct{}{}
+			}
+		case "procInstID":
+			if _, ok := fieldSeen[task.FieldProcInstID]; !ok {
+				selectedFields = append(selectedFields, task.FieldProcInstID)
+				fieldSeen[task.FieldProcInstID] = struct{}{}
+			}
+		case "procDefID":
+			if _, ok := fieldSeen[task.FieldProcDefID]; !ok {
+				selectedFields = append(selectedFields, task.FieldProcDefID)
+				fieldSeen[task.FieldProcDefID] = struct{}{}
+			}
+		case "executionID":
+			if _, ok := fieldSeen[task.FieldExecutionID]; !ok {
+				selectedFields = append(selectedFields, task.FieldExecutionID)
+				fieldSeen[task.FieldExecutionID] = struct{}{}
+			}
+		case "runID":
+			if _, ok := fieldSeen[task.FieldRunID]; !ok {
+				selectedFields = append(selectedFields, task.FieldRunID)
+				fieldSeen[task.FieldRunID] = struct{}{}
+			}
+		case "taskDefKey":
+			if _, ok := fieldSeen[task.FieldTaskDefKey]; !ok {
+				selectedFields = append(selectedFields, task.FieldTaskDefKey)
+				fieldSeen[task.FieldTaskDefKey] = struct{}{}
+			}
+		case "parentID":
+			if _, ok := fieldSeen[task.FieldParentID]; !ok {
+				selectedFields = append(selectedFields, task.FieldParentID)
+				fieldSeen[task.FieldParentID] = struct{}{}
+			}
+		case "comments":
+			if _, ok := fieldSeen[task.FieldComments]; !ok {
+				selectedFields = append(selectedFields, task.FieldComments)
+				fieldSeen[task.FieldComments] = struct{}{}
+			}
+		case "assignee":
+			if _, ok := fieldSeen[task.FieldAssignee]; !ok {
+				selectedFields = append(selectedFields, task.FieldAssignee)
+				fieldSeen[task.FieldAssignee] = struct{}{}
+			}
+		case "memberCount":
+			if _, ok := fieldSeen[task.FieldMemberCount]; !ok {
+				selectedFields = append(selectedFields, task.FieldMemberCount)
+				fieldSeen[task.FieldMemberCount] = struct{}{}
+			}
+		case "unfinishedCount":
+			if _, ok := fieldSeen[task.FieldUnfinishedCount]; !ok {
+				selectedFields = append(selectedFields, task.FieldUnfinishedCount)
+				fieldSeen[task.FieldUnfinishedCount] = struct{}{}
+			}
+		case "agreeCount":
+			if _, ok := fieldSeen[task.FieldAgreeCount]; !ok {
+				selectedFields = append(selectedFields, task.FieldAgreeCount)
+				fieldSeen[task.FieldAgreeCount] = struct{}{}
+			}
+		case "kind":
+			if _, ok := fieldSeen[task.FieldKind]; !ok {
+				selectedFields = append(selectedFields, task.FieldKind)
+				fieldSeen[task.FieldKind] = struct{}{}
+			}
+		case "sequential":
+			if _, ok := fieldSeen[task.FieldSequential]; !ok {
+				selectedFields = append(selectedFields, task.FieldSequential)
+				fieldSeen[task.FieldSequential] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[task.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, task.FieldCreatedAt)
+				fieldSeen[task.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[task.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, task.FieldUpdatedAt)
+				fieldSeen[task.FieldUpdatedAt] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[task.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, task.FieldStatus)
+				fieldSeen[task.FieldStatus] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
 		}
+	}
+	if !unknownSeen {
+		t.Select(selectedFields...)
 	}
 	return nil
 }
@@ -729,7 +1487,7 @@ type taskPaginateArgs struct {
 	opts          []TaskPaginateOption
 }
 
-func newTaskPaginateArgs(rv map[string]interface{}) *taskPaginateArgs {
+func newTaskPaginateArgs(rv map[string]any) *taskPaginateArgs {
 	args := &taskPaginateArgs{}
 	if rv == nil {
 		return args
@@ -763,35 +1521,18 @@ const (
 	whereField     = "where"
 )
 
-func fieldArgs(ctx context.Context, whereInput interface{}, path ...string) map[string]interface{} {
-	fc := graphql.GetFieldContext(ctx)
-	if fc == nil {
+func fieldArgs(ctx context.Context, whereInput any, path ...string) map[string]any {
+	field := collectedField(ctx, path...)
+	if field == nil || field.Arguments == nil {
 		return nil
 	}
 	oc := graphql.GetOperationContext(ctx)
-	for _, name := range path {
-		var field *graphql.CollectedField
-		for _, f := range graphql.CollectFields(oc, fc.Field.Selections, nil) {
-			if f.Alias == name {
-				field = &f
-				break
-			}
-		}
-		if field == nil {
-			return nil
-		}
-		cf, err := fc.Child(ctx, *field)
-		if err != nil {
-			args := field.ArgumentMap(oc.Variables)
-			return unmarshalArgs(ctx, whereInput, args)
-		}
-		fc = cf
-	}
-	return fc.Args
+	args := field.ArgumentMap(oc.Variables)
+	return unmarshalArgs(ctx, whereInput, args)
 }
 
 // unmarshalArgs allows extracting the field arguments from their raw representation.
-func unmarshalArgs(ctx context.Context, whereInput interface{}, args map[string]interface{}) map[string]interface{} {
+func unmarshalArgs(ctx context.Context, whereInput any, args map[string]any) map[string]any {
 	for _, k := range []string{firstField, lastField} {
 		v, ok := args[k]
 		if !ok {
@@ -821,7 +1562,16 @@ func unmarshalArgs(ctx context.Context, whereInput interface{}, args map[string]
 	return args
 }
 
-func limitRows(partitionBy string, limit int, orderBy ...sql.Querier) func(s *sql.Selector) {
+func limitRows(ctx context.Context, partitionBy string, limit int, first, last *int, orderBy ...sql.Querier) func(s *sql.Selector) {
+	offset := 0
+	if sp, ok := pagination.SimplePaginationFromContext(ctx); ok {
+		if first != nil {
+			offset = (sp.PageIndex - sp.CurrentIndex - 1) * *first
+		}
+		if last != nil {
+			offset = (sp.CurrentIndex - sp.PageIndex - 1) * *last
+		}
+	}
 	return func(s *sql.Selector) {
 		d := sql.Dialect(s.Dialect())
 		s.SetDistinct(false)
@@ -837,9 +1587,31 @@ func limitRows(partitionBy string, limit int, orderBy ...sql.Querier) func(s *sq
 					From(d.Table("src_query")),
 			)
 		t := d.Table("limited_query").As(s.TableName())
-		*s = *d.Select(s.UnqualifiedColumns()...).
-			From(t).
-			Where(sql.LTE(t.C("row_number"), limit)).
-			Prefix(with)
+		if offset != 0 {
+			*s = *d.Select(s.UnqualifiedColumns()...).
+				From(t).
+				Where(sql.GT(t.C("row_number"), offset)).Limit(limit).
+				Prefix(with)
+		} else {
+			*s = *d.Select(s.UnqualifiedColumns()...).
+				From(t).
+				Where(sql.LTE(t.C("row_number"), limit)).
+				Prefix(with)
+		}
 	}
+}
+
+// mayAddCondition appends another type condition to the satisfies list
+// if condition is enabled (Node/Nodes) and it does not exist in the list.
+func mayAddCondition(satisfies []string, typeCond []string) []string {
+Cond:
+	for _, c := range typeCond {
+		for _, s := range satisfies {
+			if c == s {
+				continue Cond
+			}
+		}
+		satisfies = append(satisfies, c)
+	}
+	return satisfies
 }

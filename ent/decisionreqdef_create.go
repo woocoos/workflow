@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/decisiondef"
@@ -20,6 +21,7 @@ type DecisionReqDefCreate struct {
 	config
 	mutation *DecisionReqDefMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedBy sets the "created_by" field.
@@ -70,15 +72,15 @@ func (drdc *DecisionReqDefCreate) SetNillableUpdatedAt(t *time.Time) *DecisionRe
 	return drdc
 }
 
-// SetDeploymentID sets the "deployment_id" field.
-func (drdc *DecisionReqDefCreate) SetDeploymentID(i int) *DecisionReqDefCreate {
-	drdc.mutation.SetDeploymentID(i)
+// SetTenantID sets the "tenant_id" field.
+func (drdc *DecisionReqDefCreate) SetTenantID(i int) *DecisionReqDefCreate {
+	drdc.mutation.SetTenantID(i)
 	return drdc
 }
 
-// SetOrgID sets the "org_id" field.
-func (drdc *DecisionReqDefCreate) SetOrgID(i int) *DecisionReqDefCreate {
-	drdc.mutation.SetOrgID(i)
+// SetDeploymentID sets the "deployment_id" field.
+func (drdc *DecisionReqDefCreate) SetDeploymentID(i int) *DecisionReqDefCreate {
+	drdc.mutation.SetDeploymentID(i)
 	return drdc
 }
 
@@ -142,37 +144,31 @@ func (drdc *DecisionReqDefCreate) SetNillableRevision(i *int32) *DecisionReqDefC
 	return drdc
 }
 
-// SetResourceName sets the "resource_name" field.
-func (drdc *DecisionReqDefCreate) SetResourceName(s string) *DecisionReqDefCreate {
-	drdc.mutation.SetResourceName(s)
+// SetResourceKey sets the "resource_key" field.
+func (drdc *DecisionReqDefCreate) SetResourceKey(s string) *DecisionReqDefCreate {
+	drdc.mutation.SetResourceKey(s)
 	return drdc
 }
 
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (drdc *DecisionReqDefCreate) SetNillableResourceName(s *string) *DecisionReqDefCreate {
+// SetNillableResourceKey sets the "resource_key" field if the given value is not nil.
+func (drdc *DecisionReqDefCreate) SetNillableResourceKey(s *string) *DecisionReqDefCreate {
 	if s != nil {
-		drdc.SetResourceName(*s)
+		drdc.SetResourceKey(*s)
 	}
 	return drdc
 }
 
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (drdc *DecisionReqDefCreate) SetDgrmResourceName(s string) *DecisionReqDefCreate {
-	drdc.mutation.SetDgrmResourceName(s)
+// SetResourceID sets the "resource_id" field.
+func (drdc *DecisionReqDefCreate) SetResourceID(i int) *DecisionReqDefCreate {
+	drdc.mutation.SetResourceID(i)
 	return drdc
 }
 
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (drdc *DecisionReqDefCreate) SetNillableDgrmResourceName(s *string) *DecisionReqDefCreate {
-	if s != nil {
-		drdc.SetDgrmResourceName(*s)
+// SetNillableResourceID sets the "resource_id" field if the given value is not nil.
+func (drdc *DecisionReqDefCreate) SetNillableResourceID(i *int) *DecisionReqDefCreate {
+	if i != nil {
+		drdc.SetResourceID(*i)
 	}
-	return drdc
-}
-
-// SetResourceData sets the "resource_data" field.
-func (drdc *DecisionReqDefCreate) SetResourceData(b []byte) *DecisionReqDefCreate {
-	drdc.mutation.SetResourceData(b)
 	return drdc
 }
 
@@ -220,7 +216,7 @@ func (drdc *DecisionReqDefCreate) Save(ctx context.Context) (*DecisionReqDef, er
 	if err := drdc.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks[*DecisionReqDef, DecisionReqDefMutation](ctx, drdc.sqlSave, drdc.mutation, drdc.hooks)
+	return withHooks(ctx, drdc.sqlSave, drdc.mutation, drdc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -272,11 +268,11 @@ func (drdc *DecisionReqDefCreate) check() error {
 	if _, ok := drdc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "DecisionReqDef.created_at"`)}
 	}
+	if _, ok := drdc.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "DecisionReqDef.tenant_id"`)}
+	}
 	if _, ok := drdc.mutation.DeploymentID(); !ok {
 		return &ValidationError{Name: "deployment_id", err: errors.New(`ent: missing required field "DecisionReqDef.deployment_id"`)}
-	}
-	if _, ok := drdc.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "DecisionReqDef.org_id"`)}
 	}
 	if _, ok := drdc.mutation.AppID(); !ok {
 		return &ValidationError{Name: "app_id", err: errors.New(`ent: missing required field "DecisionReqDef.app_id"`)}
@@ -318,6 +314,8 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 		_node = &DecisionReqDef{config: drdc.config}
 		_spec = sqlgraph.NewCreateSpec(decisionreqdef.Table, sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt))
 	)
+	_spec.Schema = drdc.schemaConfig.DecisionReqDef
+	_spec.OnConflict = drdc.conflict
 	if id, ok := drdc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -338,9 +336,9 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 		_spec.SetField(decisionreqdef.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := drdc.mutation.OrgID(); ok {
-		_spec.SetField(decisionreqdef.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
+	if value, ok := drdc.mutation.TenantID(); ok {
+		_spec.SetField(decisionreqdef.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := drdc.mutation.AppID(); ok {
 		_spec.SetField(decisionreqdef.FieldAppID, field.TypeInt, value)
@@ -366,17 +364,13 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 		_spec.SetField(decisionreqdef.FieldRevision, field.TypeInt32, value)
 		_node.Revision = value
 	}
-	if value, ok := drdc.mutation.ResourceName(); ok {
-		_spec.SetField(decisionreqdef.FieldResourceName, field.TypeString, value)
-		_node.ResourceName = value
+	if value, ok := drdc.mutation.ResourceKey(); ok {
+		_spec.SetField(decisionreqdef.FieldResourceKey, field.TypeString, value)
+		_node.ResourceKey = value
 	}
-	if value, ok := drdc.mutation.DgrmResourceName(); ok {
-		_spec.SetField(decisionreqdef.FieldDgrmResourceName, field.TypeString, value)
-		_node.DgrmResourceName = value
-	}
-	if value, ok := drdc.mutation.ResourceData(); ok {
-		_spec.SetField(decisionreqdef.FieldResourceData, field.TypeBytes, value)
-		_node.ResourceData = value
+	if value, ok := drdc.mutation.ResourceID(); ok {
+		_spec.SetField(decisionreqdef.FieldResourceID, field.TypeInt, value)
+		_node.ResourceID = value
 	}
 	if nodes := drdc.mutation.DeploymentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -386,12 +380,10 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 			Columns: []string{decisionreqdef.DeploymentColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: deployment.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(deployment.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = drdc.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -406,12 +398,10 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 			Columns: []string{decisionreqdef.DecisionDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisiondef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisiondef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = drdc.schemaConfig.DecisionDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -420,10 +410,533 @@ func (drdc *DecisionReqDefCreate) createSpec() (*DecisionReqDef, *sqlgraph.Creat
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.DecisionReqDef.Create().
+//		SetCreatedBy(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DecisionReqDefUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (drdc *DecisionReqDefCreate) OnConflict(opts ...sql.ConflictOption) *DecisionReqDefUpsertOne {
+	drdc.conflict = opts
+	return &DecisionReqDefUpsertOne{
+		create: drdc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (drdc *DecisionReqDefCreate) OnConflictColumns(columns ...string) *DecisionReqDefUpsertOne {
+	drdc.conflict = append(drdc.conflict, sql.ConflictColumns(columns...))
+	return &DecisionReqDefUpsertOne{
+		create: drdc,
+	}
+}
+
+type (
+	// DecisionReqDefUpsertOne is the builder for "upsert"-ing
+	//  one DecisionReqDef node.
+	DecisionReqDefUpsertOne struct {
+		create *DecisionReqDefCreate
+	}
+
+	// DecisionReqDefUpsert is the "OnConflict" setter.
+	DecisionReqDefUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DecisionReqDefUpsert) SetUpdatedBy(v int) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldUpdatedBy, v)
+	return u
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateUpdatedBy() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldUpdatedBy)
+	return u
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DecisionReqDefUpsert) AddUpdatedBy(v int) *DecisionReqDefUpsert {
+	u.Add(decisionreqdef.FieldUpdatedBy, v)
+	return u
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DecisionReqDefUpsert) ClearUpdatedBy() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldUpdatedBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionReqDefUpsert) SetUpdatedAt(v time.Time) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateUpdatedAt() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldUpdatedAt)
+	return u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DecisionReqDefUpsert) ClearUpdatedAt() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldUpdatedAt)
+	return u
+}
+
+// SetCategory sets the "category" field.
+func (u *DecisionReqDefUpsert) SetCategory(v string) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldCategory, v)
+	return u
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateCategory() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldCategory)
+	return u
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *DecisionReqDefUpsert) ClearCategory() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldCategory)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *DecisionReqDefUpsert) SetName(v string) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateName() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldName)
+	return u
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DecisionReqDefUpsert) ClearName() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldName)
+	return u
+}
+
+// SetKey sets the "key" field.
+func (u *DecisionReqDefUpsert) SetKey(v string) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldKey, v)
+	return u
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateKey() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldKey)
+	return u
+}
+
+// SetVersion sets the "version" field.
+func (u *DecisionReqDefUpsert) SetVersion(v int32) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldVersion, v)
+	return u
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateVersion() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldVersion)
+	return u
+}
+
+// AddVersion adds v to the "version" field.
+func (u *DecisionReqDefUpsert) AddVersion(v int32) *DecisionReqDefUpsert {
+	u.Add(decisionreqdef.FieldVersion, v)
+	return u
+}
+
+// SetRevision sets the "revision" field.
+func (u *DecisionReqDefUpsert) SetRevision(v int32) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldRevision, v)
+	return u
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateRevision() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldRevision)
+	return u
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *DecisionReqDefUpsert) AddRevision(v int32) *DecisionReqDefUpsert {
+	u.Add(decisionreqdef.FieldRevision, v)
+	return u
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *DecisionReqDefUpsert) ClearRevision() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldRevision)
+	return u
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *DecisionReqDefUpsert) SetResourceKey(v string) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldResourceKey, v)
+	return u
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateResourceKey() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldResourceKey)
+	return u
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *DecisionReqDefUpsert) ClearResourceKey() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldResourceKey)
+	return u
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *DecisionReqDefUpsert) SetResourceID(v int) *DecisionReqDefUpsert {
+	u.Set(decisionreqdef.FieldResourceID, v)
+	return u
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *DecisionReqDefUpsert) UpdateResourceID() *DecisionReqDefUpsert {
+	u.SetExcluded(decisionreqdef.FieldResourceID)
+	return u
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *DecisionReqDefUpsert) AddResourceID(v int) *DecisionReqDefUpsert {
+	u.Add(decisionreqdef.FieldResourceID, v)
+	return u
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *DecisionReqDefUpsert) ClearResourceID() *DecisionReqDefUpsert {
+	u.SetNull(decisionreqdef.FieldResourceID)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(decisionreqdef.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DecisionReqDefUpsertOne) UpdateNewValues() *DecisionReqDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(decisionreqdef.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedBy(); exists {
+			s.SetIgnore(decisionreqdef.FieldCreatedBy)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(decisionreqdef.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(decisionreqdef.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.DeploymentID(); exists {
+			s.SetIgnore(decisionreqdef.FieldDeploymentID)
+		}
+		if _, exists := u.create.mutation.AppID(); exists {
+			s.SetIgnore(decisionreqdef.FieldAppID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *DecisionReqDefUpsertOne) Ignore() *DecisionReqDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DecisionReqDefUpsertOne) DoNothing() *DecisionReqDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DecisionReqDefCreate.OnConflict
+// documentation for more info.
+func (u *DecisionReqDefUpsertOne) Update(set func(*DecisionReqDefUpsert)) *DecisionReqDefUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DecisionReqDefUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DecisionReqDefUpsertOne) SetUpdatedBy(v int) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DecisionReqDefUpsertOne) AddUpdatedBy(v int) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateUpdatedBy() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DecisionReqDefUpsertOne) ClearUpdatedBy() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionReqDefUpsertOne) SetUpdatedAt(v time.Time) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateUpdatedAt() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DecisionReqDefUpsertOne) ClearUpdatedAt() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetCategory sets the "category" field.
+func (u *DecisionReqDefUpsertOne) SetCategory(v string) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetCategory(v)
+	})
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateCategory() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateCategory()
+	})
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *DecisionReqDefUpsertOne) ClearCategory() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearCategory()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DecisionReqDefUpsertOne) SetName(v string) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateName() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DecisionReqDefUpsertOne) ClearName() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *DecisionReqDefUpsertOne) SetKey(v string) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateKey() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateKey()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *DecisionReqDefUpsertOne) SetVersion(v int32) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// AddVersion adds v to the "version" field.
+func (u *DecisionReqDefUpsertOne) AddVersion(v int32) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateVersion() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// SetRevision sets the "revision" field.
+func (u *DecisionReqDefUpsertOne) SetRevision(v int32) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetRevision(v)
+	})
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *DecisionReqDefUpsertOne) AddRevision(v int32) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddRevision(v)
+	})
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateRevision() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateRevision()
+	})
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *DecisionReqDefUpsertOne) ClearRevision() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearRevision()
+	})
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *DecisionReqDefUpsertOne) SetResourceKey(v string) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetResourceKey(v)
+	})
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateResourceKey() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateResourceKey()
+	})
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *DecisionReqDefUpsertOne) ClearResourceKey() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearResourceKey()
+	})
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *DecisionReqDefUpsertOne) SetResourceID(v int) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetResourceID(v)
+	})
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *DecisionReqDefUpsertOne) AddResourceID(v int) *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddResourceID(v)
+	})
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertOne) UpdateResourceID() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateResourceID()
+	})
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *DecisionReqDefUpsertOne) ClearResourceID() *DecisionReqDefUpsertOne {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearResourceID()
+	})
+}
+
+// Exec executes the query.
+func (u *DecisionReqDefUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DecisionReqDefCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DecisionReqDefUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *DecisionReqDefUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *DecisionReqDefUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // DecisionReqDefCreateBulk is the builder for creating many DecisionReqDef entities in bulk.
 type DecisionReqDefCreateBulk struct {
 	config
 	builders []*DecisionReqDefCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the DecisionReqDef entities in the database.
@@ -444,12 +957,13 @@ func (drdcb *DecisionReqDefCreateBulk) Save(ctx context.Context) ([]*DecisionReq
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, drdcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = drdcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, drdcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -500,6 +1014,335 @@ func (drdcb *DecisionReqDefCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (drdcb *DecisionReqDefCreateBulk) ExecX(ctx context.Context) {
 	if err := drdcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.DecisionReqDef.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DecisionReqDefUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (drdcb *DecisionReqDefCreateBulk) OnConflict(opts ...sql.ConflictOption) *DecisionReqDefUpsertBulk {
+	drdcb.conflict = opts
+	return &DecisionReqDefUpsertBulk{
+		create: drdcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (drdcb *DecisionReqDefCreateBulk) OnConflictColumns(columns ...string) *DecisionReqDefUpsertBulk {
+	drdcb.conflict = append(drdcb.conflict, sql.ConflictColumns(columns...))
+	return &DecisionReqDefUpsertBulk{
+		create: drdcb,
+	}
+}
+
+// DecisionReqDefUpsertBulk is the builder for "upsert"-ing
+// a bulk of DecisionReqDef nodes.
+type DecisionReqDefUpsertBulk struct {
+	create *DecisionReqDefCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(decisionreqdef.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DecisionReqDefUpsertBulk) UpdateNewValues() *DecisionReqDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(decisionreqdef.FieldID)
+			}
+			if _, exists := b.mutation.CreatedBy(); exists {
+				s.SetIgnore(decisionreqdef.FieldCreatedBy)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(decisionreqdef.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(decisionreqdef.FieldTenantID)
+			}
+			if _, exists := b.mutation.DeploymentID(); exists {
+				s.SetIgnore(decisionreqdef.FieldDeploymentID)
+			}
+			if _, exists := b.mutation.AppID(); exists {
+				s.SetIgnore(decisionreqdef.FieldAppID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.DecisionReqDef.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *DecisionReqDefUpsertBulk) Ignore() *DecisionReqDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DecisionReqDefUpsertBulk) DoNothing() *DecisionReqDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DecisionReqDefCreateBulk.OnConflict
+// documentation for more info.
+func (u *DecisionReqDefUpsertBulk) Update(set func(*DecisionReqDefUpsert)) *DecisionReqDefUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DecisionReqDefUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DecisionReqDefUpsertBulk) SetUpdatedBy(v int) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DecisionReqDefUpsertBulk) AddUpdatedBy(v int) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateUpdatedBy() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DecisionReqDefUpsertBulk) ClearUpdatedBy() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DecisionReqDefUpsertBulk) SetUpdatedAt(v time.Time) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateUpdatedAt() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DecisionReqDefUpsertBulk) ClearUpdatedAt() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetCategory sets the "category" field.
+func (u *DecisionReqDefUpsertBulk) SetCategory(v string) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetCategory(v)
+	})
+}
+
+// UpdateCategory sets the "category" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateCategory() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateCategory()
+	})
+}
+
+// ClearCategory clears the value of the "category" field.
+func (u *DecisionReqDefUpsertBulk) ClearCategory() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearCategory()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DecisionReqDefUpsertBulk) SetName(v string) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateName() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DecisionReqDefUpsertBulk) ClearName() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetKey sets the "key" field.
+func (u *DecisionReqDefUpsertBulk) SetKey(v string) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetKey(v)
+	})
+}
+
+// UpdateKey sets the "key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateKey() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateKey()
+	})
+}
+
+// SetVersion sets the "version" field.
+func (u *DecisionReqDefUpsertBulk) SetVersion(v int32) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetVersion(v)
+	})
+}
+
+// AddVersion adds v to the "version" field.
+func (u *DecisionReqDefUpsertBulk) AddVersion(v int32) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddVersion(v)
+	})
+}
+
+// UpdateVersion sets the "version" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateVersion() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateVersion()
+	})
+}
+
+// SetRevision sets the "revision" field.
+func (u *DecisionReqDefUpsertBulk) SetRevision(v int32) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetRevision(v)
+	})
+}
+
+// AddRevision adds v to the "revision" field.
+func (u *DecisionReqDefUpsertBulk) AddRevision(v int32) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddRevision(v)
+	})
+}
+
+// UpdateRevision sets the "revision" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateRevision() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateRevision()
+	})
+}
+
+// ClearRevision clears the value of the "revision" field.
+func (u *DecisionReqDefUpsertBulk) ClearRevision() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearRevision()
+	})
+}
+
+// SetResourceKey sets the "resource_key" field.
+func (u *DecisionReqDefUpsertBulk) SetResourceKey(v string) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetResourceKey(v)
+	})
+}
+
+// UpdateResourceKey sets the "resource_key" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateResourceKey() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateResourceKey()
+	})
+}
+
+// ClearResourceKey clears the value of the "resource_key" field.
+func (u *DecisionReqDefUpsertBulk) ClearResourceKey() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearResourceKey()
+	})
+}
+
+// SetResourceID sets the "resource_id" field.
+func (u *DecisionReqDefUpsertBulk) SetResourceID(v int) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.SetResourceID(v)
+	})
+}
+
+// AddResourceID adds v to the "resource_id" field.
+func (u *DecisionReqDefUpsertBulk) AddResourceID(v int) *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.AddResourceID(v)
+	})
+}
+
+// UpdateResourceID sets the "resource_id" field to the value that was provided on create.
+func (u *DecisionReqDefUpsertBulk) UpdateResourceID() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.UpdateResourceID()
+	})
+}
+
+// ClearResourceID clears the value of the "resource_id" field.
+func (u *DecisionReqDefUpsertBulk) ClearResourceID() *DecisionReqDefUpsertBulk {
+	return u.Update(func(s *DecisionReqDefUpsert) {
+		s.ClearResourceID()
+	})
+}
+
+// Exec executes the query.
+func (u *DecisionReqDefUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the DecisionReqDefCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DecisionReqDefCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DecisionReqDefUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

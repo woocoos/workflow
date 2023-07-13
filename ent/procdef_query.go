@@ -15,13 +15,15 @@ import (
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ProcDefQuery is the builder for querying ProcDef entities.
 type ProcDefQuery struct {
 	config
 	ctx                    *QueryContext
-	order                  []OrderFunc
+	order                  []procdef.OrderOption
 	inters                 []Interceptor
 	predicates             []predicate.ProcDef
 	withDeployment         *DeploymentQuery
@@ -60,7 +62,7 @@ func (pdq *ProcDefQuery) Unique(unique bool) *ProcDefQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (pdq *ProcDefQuery) Order(o ...OrderFunc) *ProcDefQuery {
+func (pdq *ProcDefQuery) Order(o ...procdef.OrderOption) *ProcDefQuery {
 	pdq.order = append(pdq.order, o...)
 	return pdq
 }
@@ -81,6 +83,9 @@ func (pdq *ProcDefQuery) QueryDeployment() *DeploymentQuery {
 			sqlgraph.To(deployment.Table, deployment.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, procdef.DeploymentTable, procdef.DeploymentColumn),
 		)
+		schemaConfig := pdq.schemaConfig
+		step.To.Schema = schemaConfig.Deployment
+		step.Edge.Schema = schemaConfig.ProcDef
 		fromU = sqlgraph.SetNeighbors(pdq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -103,6 +108,9 @@ func (pdq *ProcDefQuery) QueryProcInstances() *ProcInstQuery {
 			sqlgraph.To(procinst.Table, procinst.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, procdef.ProcInstancesTable, procdef.ProcInstancesColumn),
 		)
+		schemaConfig := pdq.schemaConfig
+		step.To.Schema = schemaConfig.ProcInst
+		step.Edge.Schema = schemaConfig.ProcInst
 		fromU = sqlgraph.SetNeighbors(pdq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -298,7 +306,7 @@ func (pdq *ProcDefQuery) Clone() *ProcDefQuery {
 	return &ProcDefQuery{
 		config:            pdq.config,
 		ctx:               pdq.ctx.Clone(),
-		order:             append([]OrderFunc{}, pdq.order...),
+		order:             append([]procdef.OrderOption{}, pdq.order...),
 		inters:            append([]Interceptor{}, pdq.inters...),
 		predicates:        append([]predicate.ProcDef{}, pdq.predicates...),
 		withDeployment:    pdq.withDeployment.Clone(),
@@ -423,6 +431,8 @@ func (pdq *ProcDefQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Pro
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = pdq.schemaConfig.ProcDef
+	ctx = internal.NewSchemaConfigContext(ctx, pdq.schemaConfig)
 	if len(pdq.modifiers) > 0 {
 		_spec.Modifiers = pdq.modifiers
 	}
@@ -502,8 +512,11 @@ func (pdq *ProcDefQuery) loadProcInstances(ctx context.Context, query *ProcInstQ
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(procinst.FieldProcDefID)
+	}
 	query.Where(predicate.ProcInst(func(s *sql.Selector) {
-		s.Where(sql.InValues(procdef.ProcInstancesColumn, fks...))
+		s.Where(sql.InValues(s.C(procdef.ProcInstancesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -513,7 +526,7 @@ func (pdq *ProcDefQuery) loadProcInstances(ctx context.Context, query *ProcInstQ
 		fk := n.ProcDefID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "proc_def_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "proc_def_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -522,6 +535,8 @@ func (pdq *ProcDefQuery) loadProcInstances(ctx context.Context, query *ProcInstQ
 
 func (pdq *ProcDefQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := pdq.querySpec()
+	_spec.Node.Schema = pdq.schemaConfig.ProcDef
+	ctx = internal.NewSchemaConfigContext(ctx, pdq.schemaConfig)
 	if len(pdq.modifiers) > 0 {
 		_spec.Modifiers = pdq.modifiers
 	}
@@ -547,6 +562,9 @@ func (pdq *ProcDefQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != procdef.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if pdq.withDeployment != nil {
+			_spec.Node.AddColumnOnce(procdef.FieldDeploymentID)
 		}
 	}
 	if ps := pdq.predicates; len(ps) > 0 {
@@ -587,6 +605,9 @@ func (pdq *ProcDefQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if pdq.ctx.Unique != nil && *pdq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(pdq.schemaConfig.ProcDef)
+	ctx = internal.NewSchemaConfigContext(ctx, pdq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range pdq.predicates {
 		p(selector)
 	}

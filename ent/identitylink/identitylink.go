@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -13,6 +17,8 @@ const (
 	Label = "identity_link"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldTaskID holds the string denoting the task_id field in the database.
 	FieldTaskID = "task_id"
 	// FieldProcDefID holds the string denoting the proc_def_id field in the database.
@@ -25,8 +31,6 @@ const (
 	FieldAssignerID = "assigner_id"
 	// FieldLinkType holds the string denoting the link_type field in the database.
 	FieldLinkType = "link_type"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
 	// FieldOperationType holds the string denoting the operation_type field in the database.
 	FieldOperationType = "operation_type"
 	// FieldComments holds the string denoting the comments field in the database.
@@ -47,13 +51,13 @@ const (
 // Columns holds all SQL columns for identitylink fields.
 var Columns = []string{
 	FieldID,
+	FieldTenantID,
 	FieldTaskID,
 	FieldProcDefID,
 	FieldGroupID,
 	FieldUserID,
 	FieldAssignerID,
 	FieldLinkType,
-	FieldOrgID,
 	FieldOperationType,
 	FieldComments,
 }
@@ -68,7 +72,14 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+// Note that the variables below are initialized by the runtime
+// package on the initialization of the application. Therefore,
+// it should be imported in the main as follows:
+//
+//	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
+	Hooks        [1]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() int
 )
@@ -104,7 +115,8 @@ type OperationType string
 
 // OperationType values.
 const (
-	OperationTypeAdd    OperationType = "add"
+	OperationTypeInit   OperationType = "init"
+	OperationTypeClaim  OperationType = "claim"
 	OperationTypeDelete OperationType = "delete"
 	OperationTypePass   OperationType = "pass"
 	OperationTypeReject OperationType = "reject"
@@ -117,11 +129,78 @@ func (ot OperationType) String() string {
 // OperationTypeValidator is a validator for the "operation_type" field enum values. It is called by the builders before save.
 func OperationTypeValidator(ot OperationType) error {
 	switch ot {
-	case OperationTypeAdd, OperationTypeDelete, OperationTypePass, OperationTypeReject:
+	case OperationTypeInit, OperationTypeClaim, OperationTypeDelete, OperationTypePass, OperationTypeReject:
 		return nil
 	default:
 		return fmt.Errorf("identitylink: invalid enum value for operation_type field: %q", ot)
 	}
+}
+
+// OrderOption defines the ordering options for the IdentityLink queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByTaskID orders the results by the task_id field.
+func ByTaskID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTaskID, opts...).ToFunc()
+}
+
+// ByProcDefID orders the results by the proc_def_id field.
+func ByProcDefID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProcDefID, opts...).ToFunc()
+}
+
+// ByGroupID orders the results by the group_id field.
+func ByGroupID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGroupID, opts...).ToFunc()
+}
+
+// ByUserID orders the results by the user_id field.
+func ByUserID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserID, opts...).ToFunc()
+}
+
+// ByAssignerID orders the results by the assigner_id field.
+func ByAssignerID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAssignerID, opts...).ToFunc()
+}
+
+// ByLinkType orders the results by the link_type field.
+func ByLinkType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLinkType, opts...).ToFunc()
+}
+
+// ByOperationType orders the results by the operation_type field.
+func ByOperationType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOperationType, opts...).ToFunc()
+}
+
+// ByComments orders the results by the comments field.
+func ByComments(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldComments, opts...).ToFunc()
+}
+
+// ByTaskField orders the results by task field.
+func ByTaskField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTaskStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newTaskStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TaskInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, TaskTable, TaskColumn),
+	)
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

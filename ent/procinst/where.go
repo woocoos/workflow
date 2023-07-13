@@ -8,6 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ID filters vertices based on their ID field.
@@ -75,14 +77,14 @@ func UpdatedAt(v time.Time) predicate.ProcInst {
 	return predicate.ProcInst(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldEQ(FieldTenantID, v))
+}
+
 // ProcDefID applies equality check predicate on the "proc_def_id" field. It's identical to ProcDefIDEQ.
 func ProcDefID(v int) predicate.ProcInst {
 	return predicate.ProcInst(sql.FieldEQ(FieldProcDefID, v))
-}
-
-// OrgID applies equality check predicate on the "org_id" field. It's identical to OrgIDEQ.
-func OrgID(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldEQ(FieldOrgID, v))
 }
 
 // AppID applies equality check predicate on the "app_id" field. It's identical to AppIDEQ.
@@ -315,6 +317,46 @@ func UpdatedAtNotNil() predicate.ProcInst {
 	return predicate.ProcInst(sql.FieldNotNull(FieldUpdatedAt))
 }
 
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldNotIn(FieldTenantID, vs...))
+}
+
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldGT(FieldTenantID, v))
+}
+
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldGTE(FieldTenantID, v))
+}
+
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldLT(FieldTenantID, v))
+}
+
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v int) predicate.ProcInst {
+	return predicate.ProcInst(sql.FieldLTE(FieldTenantID, v))
+}
+
 // ProcDefIDEQ applies the EQ predicate on the "proc_def_id" field.
 func ProcDefIDEQ(v int) predicate.ProcInst {
 	return predicate.ProcInst(sql.FieldEQ(FieldProcDefID, v))
@@ -333,46 +375,6 @@ func ProcDefIDIn(vs ...int) predicate.ProcInst {
 // ProcDefIDNotIn applies the NotIn predicate on the "proc_def_id" field.
 func ProcDefIDNotIn(vs ...int) predicate.ProcInst {
 	return predicate.ProcInst(sql.FieldNotIn(FieldProcDefID, vs...))
-}
-
-// OrgIDEQ applies the EQ predicate on the "org_id" field.
-func OrgIDEQ(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldEQ(FieldOrgID, v))
-}
-
-// OrgIDNEQ applies the NEQ predicate on the "org_id" field.
-func OrgIDNEQ(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldNEQ(FieldOrgID, v))
-}
-
-// OrgIDIn applies the In predicate on the "org_id" field.
-func OrgIDIn(vs ...int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldIn(FieldOrgID, vs...))
-}
-
-// OrgIDNotIn applies the NotIn predicate on the "org_id" field.
-func OrgIDNotIn(vs ...int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldNotIn(FieldOrgID, vs...))
-}
-
-// OrgIDGT applies the GT predicate on the "org_id" field.
-func OrgIDGT(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldGT(FieldOrgID, v))
-}
-
-// OrgIDGTE applies the GTE predicate on the "org_id" field.
-func OrgIDGTE(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldGTE(FieldOrgID, v))
-}
-
-// OrgIDLT applies the LT predicate on the "org_id" field.
-func OrgIDLT(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldLT(FieldOrgID, v))
-}
-
-// OrgIDLTE applies the LTE predicate on the "org_id" field.
-func OrgIDLTE(v int) predicate.ProcInst {
-	return predicate.ProcInst(sql.FieldLTE(FieldOrgID, v))
 }
 
 // AppIDEQ applies the EQ predicate on the "app_id" field.
@@ -912,6 +914,9 @@ func HasProcDef() predicate.ProcInst {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, ProcDefTable, ProcDefColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcInst
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -919,11 +924,10 @@ func HasProcDef() predicate.ProcInst {
 // HasProcDefWith applies the HasEdge predicate on the "proc_def" edge with a given conditions (other predicates).
 func HasProcDefWith(preds ...predicate.ProcDef) predicate.ProcInst {
 	return predicate.ProcInst(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(ProcDefInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, ProcDefTable, ProcDefColumn),
-		)
+		step := newProcDefStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcInst
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -939,6 +943,9 @@ func HasTasks() predicate.ProcInst {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, TasksTable, TasksColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.Task
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -946,11 +953,10 @@ func HasTasks() predicate.ProcInst {
 // HasTasksWith applies the HasEdge predicate on the "tasks" edge with a given conditions (other predicates).
 func HasTasksWith(preds ...predicate.Task) predicate.ProcInst {
 	return predicate.ProcInst(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(TasksInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, TasksTable, TasksColumn),
-		)
+		step := newTasksStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.Task
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -961,32 +967,15 @@ func HasTasksWith(preds ...predicate.Task) predicate.ProcInst {
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.ProcInst) predicate.ProcInst {
-	return predicate.ProcInst(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.ProcInst(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.ProcInst) predicate.ProcInst {
-	return predicate.ProcInst(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.ProcInst(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.ProcInst) predicate.ProcInst {
-	return predicate.ProcInst(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.ProcInst(sql.NotPredicates(p))
 }

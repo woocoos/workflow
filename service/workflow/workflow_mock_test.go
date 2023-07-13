@@ -4,8 +4,6 @@ import (
 	"context"
 	"github.com/woocoos/workflow/ent"
 	"github.com/woocoos/workflow/pkg/engine"
-	"github.com/woocoos/workflow/test"
-	"os"
 	"path/filepath"
 )
 
@@ -16,29 +14,16 @@ type FileExport struct {
 }
 
 func (e *FileExport) GetProcDef(ctx context.Context, req *engine.GetProcDefRequest) (*ent.ProcDef, error) {
-	file := filepath.Join(test.BaseDir(), "case", req.ProcDefKey+".bpmn")
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ent.ProcDef{
-		Key:          req.ProcDefKey,
-		ResourceName: filepath.Base(file),
-		ResourceData: bs,
+		Key:         req.ProcDefKey,
+		ResourceKey: filepath.Join("case", req.ProcDefKey+".bpmn"),
 	}, nil
 }
 
 func (e *FileExport) GetDecisionReqDef(ctx context.Context, req *engine.GetDecisionReqDefRequest) (*ent.DecisionReqDef, error) {
-	file := filepath.Join(test.BaseDir(), "case", "decisions.dmn")
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
 	return &ent.DecisionReqDef{
-		Key:          req.DecisionDefKey,
-		ResourceName: "decisions.dmn",
-		ResourceData: bs,
+		Key:         req.DecisionDefKey,
+		ResourceKey: filepath.Join("case", "decisions.dmn"),
 	}, nil
 }
 

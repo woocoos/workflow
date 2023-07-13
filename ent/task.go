@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
@@ -17,6 +18,8 @@ type Task struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 流程实例ID
 	ProcInstID int `json:"proc_inst_id,omitempty"`
 	// 流程定义ID
@@ -43,8 +46,6 @@ type Task struct {
 	Kind task.Kind `json:"kind,omitempty"`
 	// 默认并行false,顺序执行true
 	Sequential bool `json:"sequential,omitempty"`
-	// 所属根组织ID
-	OrgID int `json:"org_id,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 创建时间
@@ -53,7 +54,8 @@ type Task struct {
 	Status task.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TaskQuery when eager-loading is set.
-	Edges TaskEdges `json:"edges"`
+	Edges        TaskEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // TaskEdges holds the relations/edges for other nodes in the graph.
@@ -100,14 +102,14 @@ func (*Task) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case task.FieldSequential:
 			values[i] = new(sql.NullBool)
-		case task.FieldID, task.FieldProcInstID, task.FieldProcDefID, task.FieldParentID, task.FieldMemberCount, task.FieldUnfinishedCount, task.FieldAgreeCount, task.FieldOrgID:
+		case task.FieldID, task.FieldTenantID, task.FieldProcInstID, task.FieldProcDefID, task.FieldParentID, task.FieldMemberCount, task.FieldUnfinishedCount, task.FieldAgreeCount:
 			values[i] = new(sql.NullInt64)
 		case task.FieldExecutionID, task.FieldRunID, task.FieldTaskDefKey, task.FieldComments, task.FieldAssignee, task.FieldKind, task.FieldStatus:
 			values[i] = new(sql.NullString)
 		case task.FieldCreatedAt, task.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Task", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -127,6 +129,12 @@ func (t *Task) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			t.ID = int(value.Int64)
+		case task.FieldTenantID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value.Valid {
+				t.TenantID = int(value.Int64)
+			}
 		case task.FieldProcInstID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field proc_inst_id", values[i])
@@ -205,12 +213,6 @@ func (t *Task) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				t.Sequential = value.Bool
 			}
-		case task.FieldOrgID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
-			} else if value.Valid {
-				t.OrgID = int(value.Int64)
-			}
 		case task.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -229,9 +231,17 @@ func (t *Task) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				t.Status = task.Status(value.String)
 			}
+		default:
+			t.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Task.
+// This includes values selected through modifiers, order, etc.
+func (t *Task) Value(name string) (ent.Value, error) {
+	return t.selectValues.Get(name)
 }
 
 // QueryProcInst queries the "proc_inst" edge of the Task entity.
@@ -267,6 +277,9 @@ func (t *Task) String() string {
 	var builder strings.Builder
 	builder.WriteString("Task(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", t.ID))
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", t.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("proc_inst_id=")
 	builder.WriteString(fmt.Sprintf("%v", t.ProcInstID))
 	builder.WriteString(", ")
@@ -305,9 +318,6 @@ func (t *Task) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("sequential=")
 	builder.WriteString(fmt.Sprintf("%v", t.Sequential))
-	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", t.OrgID))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(t.CreatedAt.Format(time.ANSIC))

@@ -9,6 +9,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 	"github.com/woocoos/workflow/ent/task"
 )
 
@@ -27,7 +29,7 @@ func (td *TaskDelete) Where(ps ...predicate.Task) *TaskDelete {
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (td *TaskDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks[int, TaskMutation](ctx, td.sqlExec, td.mutation, td.hooks)
+	return withHooks(ctx, td.sqlExec, td.mutation, td.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -41,6 +43,8 @@ func (td *TaskDelete) ExecX(ctx context.Context) int {
 
 func (td *TaskDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(task.Table, sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt))
+	_spec.Node.Schema = td.schemaConfig.Task
+	ctx = internal.NewSchemaConfigContext(ctx, td.schemaConfig)
 	if ps := td.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

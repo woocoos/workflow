@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
@@ -20,6 +21,7 @@ type DeploymentCreate struct {
 	config
 	mutation *DeploymentMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedBy sets the "created_by" field.
@@ -70,9 +72,9 @@ func (dc *DeploymentCreate) SetNillableUpdatedAt(t *time.Time) *DeploymentCreate
 	return dc
 }
 
-// SetOrgID sets the "org_id" field.
-func (dc *DeploymentCreate) SetOrgID(i int) *DeploymentCreate {
-	dc.mutation.SetOrgID(i)
+// SetTenantID sets the "tenant_id" field.
+func (dc *DeploymentCreate) SetTenantID(i int) *DeploymentCreate {
+	dc.mutation.SetTenantID(i)
 	return dc
 }
 
@@ -178,7 +180,7 @@ func (dc *DeploymentCreate) Save(ctx context.Context) (*Deployment, error) {
 	if err := dc.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks[*Deployment, DeploymentMutation](ctx, dc.sqlSave, dc.mutation, dc.hooks)
+	return withHooks(ctx, dc.sqlSave, dc.mutation, dc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -237,8 +239,8 @@ func (dc *DeploymentCreate) check() error {
 	if _, ok := dc.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Deployment.created_at"`)}
 	}
-	if _, ok := dc.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "Deployment.org_id"`)}
+	if _, ok := dc.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "Deployment.tenant_id"`)}
 	}
 	if _, ok := dc.mutation.AppID(); !ok {
 		return &ValidationError{Name: "app_id", err: errors.New(`ent: missing required field "Deployment.app_id"`)}
@@ -274,6 +276,8 @@ func (dc *DeploymentCreate) createSpec() (*Deployment, *sqlgraph.CreateSpec) {
 		_node = &Deployment{config: dc.config}
 		_spec = sqlgraph.NewCreateSpec(deployment.Table, sqlgraph.NewFieldSpec(deployment.FieldID, field.TypeInt))
 	)
+	_spec.Schema = dc.schemaConfig.Deployment
+	_spec.OnConflict = dc.conflict
 	if id, ok := dc.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -294,9 +298,9 @@ func (dc *DeploymentCreate) createSpec() (*Deployment, *sqlgraph.CreateSpec) {
 		_spec.SetField(deployment.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := dc.mutation.OrgID(); ok {
-		_spec.SetField(deployment.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
+	if value, ok := dc.mutation.TenantID(); ok {
+		_spec.SetField(deployment.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := dc.mutation.AppID(); ok {
 		_spec.SetField(deployment.FieldAppID, field.TypeInt, value)
@@ -322,12 +326,10 @@ func (dc *DeploymentCreate) createSpec() (*Deployment, *sqlgraph.CreateSpec) {
 			Columns: []string{deployment.ProcDefsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = dc.schemaConfig.ProcDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -341,12 +343,10 @@ func (dc *DeploymentCreate) createSpec() (*Deployment, *sqlgraph.CreateSpec) {
 			Columns: []string{deployment.DecisionReqsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = dc.schemaConfig.DecisionReqDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -355,10 +355,325 @@ func (dc *DeploymentCreate) createSpec() (*Deployment, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Deployment.Create().
+//		SetCreatedBy(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DeploymentUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (dc *DeploymentCreate) OnConflict(opts ...sql.ConflictOption) *DeploymentUpsertOne {
+	dc.conflict = opts
+	return &DeploymentUpsertOne{
+		create: dc,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (dc *DeploymentCreate) OnConflictColumns(columns ...string) *DeploymentUpsertOne {
+	dc.conflict = append(dc.conflict, sql.ConflictColumns(columns...))
+	return &DeploymentUpsertOne{
+		create: dc,
+	}
+}
+
+type (
+	// DeploymentUpsertOne is the builder for "upsert"-ing
+	//  one Deployment node.
+	DeploymentUpsertOne struct {
+		create *DeploymentCreate
+	}
+
+	// DeploymentUpsert is the "OnConflict" setter.
+	DeploymentUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DeploymentUpsert) SetUpdatedBy(v int) *DeploymentUpsert {
+	u.Set(deployment.FieldUpdatedBy, v)
+	return u
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DeploymentUpsert) UpdateUpdatedBy() *DeploymentUpsert {
+	u.SetExcluded(deployment.FieldUpdatedBy)
+	return u
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DeploymentUpsert) AddUpdatedBy(v int) *DeploymentUpsert {
+	u.Add(deployment.FieldUpdatedBy, v)
+	return u
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DeploymentUpsert) ClearUpdatedBy() *DeploymentUpsert {
+	u.SetNull(deployment.FieldUpdatedBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DeploymentUpsert) SetUpdatedAt(v time.Time) *DeploymentUpsert {
+	u.Set(deployment.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DeploymentUpsert) UpdateUpdatedAt() *DeploymentUpsert {
+	u.SetExcluded(deployment.FieldUpdatedAt)
+	return u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DeploymentUpsert) ClearUpdatedAt() *DeploymentUpsert {
+	u.SetNull(deployment.FieldUpdatedAt)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *DeploymentUpsert) SetName(v string) *DeploymentUpsert {
+	u.Set(deployment.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DeploymentUpsert) UpdateName() *DeploymentUpsert {
+	u.SetExcluded(deployment.FieldName)
+	return u
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DeploymentUpsert) ClearName() *DeploymentUpsert {
+	u.SetNull(deployment.FieldName)
+	return u
+}
+
+// SetSource sets the "source" field.
+func (u *DeploymentUpsert) SetSource(v string) *DeploymentUpsert {
+	u.Set(deployment.FieldSource, v)
+	return u
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *DeploymentUpsert) UpdateSource() *DeploymentUpsert {
+	u.SetExcluded(deployment.FieldSource)
+	return u
+}
+
+// ClearSource clears the value of the "source" field.
+func (u *DeploymentUpsert) ClearSource() *DeploymentUpsert {
+	u.SetNull(deployment.FieldSource)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(deployment.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DeploymentUpsertOne) UpdateNewValues() *DeploymentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(deployment.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedBy(); exists {
+			s.SetIgnore(deployment.FieldCreatedBy)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(deployment.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(deployment.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.AppID(); exists {
+			s.SetIgnore(deployment.FieldAppID)
+		}
+		if _, exists := u.create.mutation.DeployTime(); exists {
+			s.SetIgnore(deployment.FieldDeployTime)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *DeploymentUpsertOne) Ignore() *DeploymentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DeploymentUpsertOne) DoNothing() *DeploymentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DeploymentCreate.OnConflict
+// documentation for more info.
+func (u *DeploymentUpsertOne) Update(set func(*DeploymentUpsert)) *DeploymentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DeploymentUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DeploymentUpsertOne) SetUpdatedBy(v int) *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DeploymentUpsertOne) AddUpdatedBy(v int) *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DeploymentUpsertOne) UpdateUpdatedBy() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DeploymentUpsertOne) ClearUpdatedBy() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DeploymentUpsertOne) SetUpdatedAt(v time.Time) *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DeploymentUpsertOne) UpdateUpdatedAt() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DeploymentUpsertOne) ClearUpdatedAt() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DeploymentUpsertOne) SetName(v string) *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DeploymentUpsertOne) UpdateName() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DeploymentUpsertOne) ClearName() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetSource sets the "source" field.
+func (u *DeploymentUpsertOne) SetSource(v string) *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetSource(v)
+	})
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *DeploymentUpsertOne) UpdateSource() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateSource()
+	})
+}
+
+// ClearSource clears the value of the "source" field.
+func (u *DeploymentUpsertOne) ClearSource() *DeploymentUpsertOne {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearSource()
+	})
+}
+
+// Exec executes the query.
+func (u *DeploymentUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DeploymentCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DeploymentUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *DeploymentUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *DeploymentUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // DeploymentCreateBulk is the builder for creating many Deployment entities in bulk.
 type DeploymentCreateBulk struct {
 	config
 	builders []*DeploymentCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Deployment entities in the database.
@@ -379,12 +694,13 @@ func (dcb *DeploymentCreateBulk) Save(ctx context.Context) ([]*Deployment, error
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, dcb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = dcb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, dcb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -435,6 +751,223 @@ func (dcb *DeploymentCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (dcb *DeploymentCreateBulk) ExecX(ctx context.Context) {
 	if err := dcb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Deployment.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DeploymentUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (dcb *DeploymentCreateBulk) OnConflict(opts ...sql.ConflictOption) *DeploymentUpsertBulk {
+	dcb.conflict = opts
+	return &DeploymentUpsertBulk{
+		create: dcb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (dcb *DeploymentCreateBulk) OnConflictColumns(columns ...string) *DeploymentUpsertBulk {
+	dcb.conflict = append(dcb.conflict, sql.ConflictColumns(columns...))
+	return &DeploymentUpsertBulk{
+		create: dcb,
+	}
+}
+
+// DeploymentUpsertBulk is the builder for "upsert"-ing
+// a bulk of Deployment nodes.
+type DeploymentUpsertBulk struct {
+	create *DeploymentCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(deployment.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DeploymentUpsertBulk) UpdateNewValues() *DeploymentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(deployment.FieldID)
+			}
+			if _, exists := b.mutation.CreatedBy(); exists {
+				s.SetIgnore(deployment.FieldCreatedBy)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(deployment.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(deployment.FieldTenantID)
+			}
+			if _, exists := b.mutation.AppID(); exists {
+				s.SetIgnore(deployment.FieldAppID)
+			}
+			if _, exists := b.mutation.DeployTime(); exists {
+				s.SetIgnore(deployment.FieldDeployTime)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Deployment.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *DeploymentUpsertBulk) Ignore() *DeploymentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DeploymentUpsertBulk) DoNothing() *DeploymentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DeploymentCreateBulk.OnConflict
+// documentation for more info.
+func (u *DeploymentUpsertBulk) Update(set func(*DeploymentUpsert)) *DeploymentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DeploymentUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *DeploymentUpsertBulk) SetUpdatedBy(v int) *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *DeploymentUpsertBulk) AddUpdatedBy(v int) *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *DeploymentUpsertBulk) UpdateUpdatedBy() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *DeploymentUpsertBulk) ClearUpdatedBy() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *DeploymentUpsertBulk) SetUpdatedAt(v time.Time) *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *DeploymentUpsertBulk) UpdateUpdatedAt() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *DeploymentUpsertBulk) ClearUpdatedAt() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DeploymentUpsertBulk) SetName(v string) *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DeploymentUpsertBulk) UpdateName() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *DeploymentUpsertBulk) ClearName() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetSource sets the "source" field.
+func (u *DeploymentUpsertBulk) SetSource(v string) *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.SetSource(v)
+	})
+}
+
+// UpdateSource sets the "source" field to the value that was provided on create.
+func (u *DeploymentUpsertBulk) UpdateSource() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.UpdateSource()
+	})
+}
+
+// ClearSource clears the value of the "source" field.
+func (u *DeploymentUpsertBulk) ClearSource() *DeploymentUpsertBulk {
+	return u.Update(func(s *DeploymentUpsert) {
+		s.ClearSource()
+	})
+}
+
+// Exec executes the query.
+func (u *DeploymentUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the DeploymentCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DeploymentCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DeploymentUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

@@ -16,6 +16,9 @@ type DefaultConverter struct {
 }
 
 func (d *DefaultConverter) Match(rule string, input bpmn.Mappings) (bool, error) {
+	if strings.HasPrefix(rule, "=") {
+		rule = strings.TrimPrefix(rule, "=")
+	}
 	v, err := Eval(rule, input, expr.AsBool())
 	if err != nil {
 		return false, err

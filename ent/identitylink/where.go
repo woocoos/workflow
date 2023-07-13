@@ -6,6 +6,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // ID filters vertices based on their ID field.
@@ -53,6 +55,11 @@ func IDLTE(id int) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldLTE(FieldID, id))
 }
 
+// TenantID applies equality check predicate on the "tenant_id" field. It's identical to TenantIDEQ.
+func TenantID(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldEQ(FieldTenantID, v))
+}
+
 // TaskID applies equality check predicate on the "task_id" field. It's identical to TaskIDEQ.
 func TaskID(v int) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldEQ(FieldTaskID, v))
@@ -78,14 +85,49 @@ func AssignerID(v int) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldEQ(FieldAssignerID, v))
 }
 
-// OrgID applies equality check predicate on the "org_id" field. It's identical to OrgIDEQ.
-func OrgID(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldEQ(FieldOrgID, v))
-}
-
 // Comments applies equality check predicate on the "comments" field. It's identical to CommentsEQ.
 func Comments(v string) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldEQ(FieldComments, v))
+}
+
+// TenantIDEQ applies the EQ predicate on the "tenant_id" field.
+func TenantIDEQ(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldEQ(FieldTenantID, v))
+}
+
+// TenantIDNEQ applies the NEQ predicate on the "tenant_id" field.
+func TenantIDNEQ(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldNEQ(FieldTenantID, v))
+}
+
+// TenantIDIn applies the In predicate on the "tenant_id" field.
+func TenantIDIn(vs ...int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldIn(FieldTenantID, vs...))
+}
+
+// TenantIDNotIn applies the NotIn predicate on the "tenant_id" field.
+func TenantIDNotIn(vs ...int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldNotIn(FieldTenantID, vs...))
+}
+
+// TenantIDGT applies the GT predicate on the "tenant_id" field.
+func TenantIDGT(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldGT(FieldTenantID, v))
+}
+
+// TenantIDGTE applies the GTE predicate on the "tenant_id" field.
+func TenantIDGTE(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldGTE(FieldTenantID, v))
+}
+
+// TenantIDLT applies the LT predicate on the "tenant_id" field.
+func TenantIDLT(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldLT(FieldTenantID, v))
+}
+
+// TenantIDLTE applies the LTE predicate on the "tenant_id" field.
+func TenantIDLTE(v int) predicate.IdentityLink {
+	return predicate.IdentityLink(sql.FieldLTE(FieldTenantID, v))
 }
 
 // TaskIDEQ applies the EQ predicate on the "task_id" field.
@@ -318,46 +360,6 @@ func LinkTypeNotIn(vs ...LinkType) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldNotIn(FieldLinkType, vs...))
 }
 
-// OrgIDEQ applies the EQ predicate on the "org_id" field.
-func OrgIDEQ(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldEQ(FieldOrgID, v))
-}
-
-// OrgIDNEQ applies the NEQ predicate on the "org_id" field.
-func OrgIDNEQ(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldNEQ(FieldOrgID, v))
-}
-
-// OrgIDIn applies the In predicate on the "org_id" field.
-func OrgIDIn(vs ...int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldIn(FieldOrgID, vs...))
-}
-
-// OrgIDNotIn applies the NotIn predicate on the "org_id" field.
-func OrgIDNotIn(vs ...int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldNotIn(FieldOrgID, vs...))
-}
-
-// OrgIDGT applies the GT predicate on the "org_id" field.
-func OrgIDGT(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldGT(FieldOrgID, v))
-}
-
-// OrgIDGTE applies the GTE predicate on the "org_id" field.
-func OrgIDGTE(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldGTE(FieldOrgID, v))
-}
-
-// OrgIDLT applies the LT predicate on the "org_id" field.
-func OrgIDLT(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldLT(FieldOrgID, v))
-}
-
-// OrgIDLTE applies the LTE predicate on the "org_id" field.
-func OrgIDLTE(v int) predicate.IdentityLink {
-	return predicate.IdentityLink(sql.FieldLTE(FieldOrgID, v))
-}
-
 // OperationTypeEQ applies the EQ predicate on the "operation_type" field.
 func OperationTypeEQ(v OperationType) predicate.IdentityLink {
 	return predicate.IdentityLink(sql.FieldEQ(FieldOperationType, v))
@@ -460,6 +462,9 @@ func HasTask() predicate.IdentityLink {
 			sqlgraph.From(Table, FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, TaskTable, TaskColumn),
 		)
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.IdentityLink
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
@@ -467,11 +472,10 @@ func HasTask() predicate.IdentityLink {
 // HasTaskWith applies the HasEdge predicate on the "task" edge with a given conditions (other predicates).
 func HasTaskWith(preds ...predicate.Task) predicate.IdentityLink {
 	return predicate.IdentityLink(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.To(TaskInverseTable, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, TaskTable, TaskColumn),
-		)
+		step := newTaskStep()
+		schemaConfig := internal.SchemaConfigFromContext(s.Context())
+		step.To.Schema = schemaConfig.Task
+		step.Edge.Schema = schemaConfig.IdentityLink
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -482,32 +486,15 @@ func HasTaskWith(preds ...predicate.Task) predicate.IdentityLink {
 
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.IdentityLink) predicate.IdentityLink {
-	return predicate.IdentityLink(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for _, p := range predicates {
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.IdentityLink(sql.AndPredicates(predicates...))
 }
 
 // Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.IdentityLink) predicate.IdentityLink {
-	return predicate.IdentityLink(func(s *sql.Selector) {
-		s1 := s.Clone().SetP(nil)
-		for i, p := range predicates {
-			if i > 0 {
-				s1.Or()
-			}
-			p(s1)
-		}
-		s.Where(s1.P())
-	})
+	return predicate.IdentityLink(sql.OrPredicates(predicates...))
 }
 
 // Not applies the not operator on the given predicate.
 func Not(p predicate.IdentityLink) predicate.IdentityLink {
-	return predicate.IdentityLink(func(s *sql.Selector) {
-		p(s.Not())
-	})
+	return predicate.IdentityLink(sql.NotPredicates(p))
 }

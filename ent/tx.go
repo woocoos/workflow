@@ -20,6 +20,14 @@ type Tx struct {
 	Deployment *DeploymentClient
 	// IdentityLink is the client for interacting with the IdentityLink builders.
 	IdentityLink *IdentityLinkClient
+	// OrgApp is the client for interacting with the OrgApp builders.
+	OrgApp *OrgAppClient
+	// OrgRole is the client for interacting with the OrgRole builders.
+	OrgRole *OrgRoleClient
+	// OrgRoleUser is the client for interacting with the OrgRoleUser builders.
+	OrgRoleUser *OrgRoleUserClient
+	// OrgUser is the client for interacting with the OrgUser builders.
+	OrgUser *OrgUserClient
 	// ProcDef is the client for interacting with the ProcDef builders.
 	ProcDef *ProcDefClient
 	// ProcInst is the client for interacting with the ProcInst builders.
@@ -161,6 +169,10 @@ func (tx *Tx) init() {
 	tx.DecisionReqDef = NewDecisionReqDefClient(tx.config)
 	tx.Deployment = NewDeploymentClient(tx.config)
 	tx.IdentityLink = NewIdentityLinkClient(tx.config)
+	tx.OrgApp = NewOrgAppClient(tx.config)
+	tx.OrgRole = NewOrgRoleClient(tx.config)
+	tx.OrgRoleUser = NewOrgRoleUserClient(tx.config)
+	tx.OrgUser = NewOrgUserClient(tx.config)
 	tx.ProcDef = NewProcDefClient(tx.config)
 	tx.ProcInst = NewProcInstClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)

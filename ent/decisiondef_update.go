@@ -14,6 +14,8 @@ import (
 	"github.com/woocoos/workflow/ent/decisiondef"
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DecisionDefUpdate is the builder for updating DecisionDef entities.
@@ -194,46 +196,6 @@ func (ddu *DecisionDefUpdate) ClearVersionTag() *DecisionDefUpdate {
 	return ddu
 }
 
-// SetResourceName sets the "resource_name" field.
-func (ddu *DecisionDefUpdate) SetResourceName(s string) *DecisionDefUpdate {
-	ddu.mutation.SetResourceName(s)
-	return ddu
-}
-
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (ddu *DecisionDefUpdate) SetNillableResourceName(s *string) *DecisionDefUpdate {
-	if s != nil {
-		ddu.SetResourceName(*s)
-	}
-	return ddu
-}
-
-// ClearResourceName clears the value of the "resource_name" field.
-func (ddu *DecisionDefUpdate) ClearResourceName() *DecisionDefUpdate {
-	ddu.mutation.ClearResourceName()
-	return ddu
-}
-
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (ddu *DecisionDefUpdate) SetDgrmResourceName(s string) *DecisionDefUpdate {
-	ddu.mutation.SetDgrmResourceName(s)
-	return ddu
-}
-
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (ddu *DecisionDefUpdate) SetNillableDgrmResourceName(s *string) *DecisionDefUpdate {
-	if s != nil {
-		ddu.SetDgrmResourceName(*s)
-	}
-	return ddu
-}
-
-// ClearDgrmResourceName clears the value of the "dgrm_resource_name" field.
-func (ddu *DecisionDefUpdate) ClearDgrmResourceName() *DecisionDefUpdate {
-	ddu.mutation.ClearDgrmResourceName()
-	return ddu
-}
-
 // SetReqDef sets the "req_def" edge to the DecisionReqDef entity.
 func (ddu *DecisionDefUpdate) SetReqDef(d *DecisionReqDef) *DecisionDefUpdate {
 	return ddu.SetReqDefID(d.ID)
@@ -252,7 +214,7 @@ func (ddu *DecisionDefUpdate) ClearReqDef() *DecisionDefUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (ddu *DecisionDefUpdate) Save(ctx context.Context) (int, error) {
-	return withHooks[int, DecisionDefMutation](ctx, ddu.sqlSave, ddu.mutation, ddu.hooks)
+	return withHooks(ctx, ddu.sqlSave, ddu.mutation, ddu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -351,18 +313,6 @@ func (ddu *DecisionDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if ddu.mutation.VersionTagCleared() {
 		_spec.ClearField(decisiondef.FieldVersionTag, field.TypeString)
 	}
-	if value, ok := ddu.mutation.ResourceName(); ok {
-		_spec.SetField(decisiondef.FieldResourceName, field.TypeString, value)
-	}
-	if ddu.mutation.ResourceNameCleared() {
-		_spec.ClearField(decisiondef.FieldResourceName, field.TypeString)
-	}
-	if value, ok := ddu.mutation.DgrmResourceName(); ok {
-		_spec.SetField(decisiondef.FieldDgrmResourceName, field.TypeString, value)
-	}
-	if ddu.mutation.DgrmResourceNameCleared() {
-		_spec.ClearField(decisiondef.FieldDgrmResourceName, field.TypeString)
-	}
 	if ddu.mutation.ReqDefCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -371,12 +321,10 @@ func (ddu *DecisionDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{decisiondef.ReqDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = ddu.schemaConfig.DecisionDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := ddu.mutation.ReqDefIDs(); len(nodes) > 0 {
@@ -387,17 +335,17 @@ func (ddu *DecisionDefUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{decisiondef.ReqDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = ddu.schemaConfig.DecisionDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = ddu.schemaConfig.DecisionDef
+	ctx = internal.NewSchemaConfigContext(ctx, ddu.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, ddu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decisiondef.Label}
@@ -583,46 +531,6 @@ func (dduo *DecisionDefUpdateOne) ClearVersionTag() *DecisionDefUpdateOne {
 	return dduo
 }
 
-// SetResourceName sets the "resource_name" field.
-func (dduo *DecisionDefUpdateOne) SetResourceName(s string) *DecisionDefUpdateOne {
-	dduo.mutation.SetResourceName(s)
-	return dduo
-}
-
-// SetNillableResourceName sets the "resource_name" field if the given value is not nil.
-func (dduo *DecisionDefUpdateOne) SetNillableResourceName(s *string) *DecisionDefUpdateOne {
-	if s != nil {
-		dduo.SetResourceName(*s)
-	}
-	return dduo
-}
-
-// ClearResourceName clears the value of the "resource_name" field.
-func (dduo *DecisionDefUpdateOne) ClearResourceName() *DecisionDefUpdateOne {
-	dduo.mutation.ClearResourceName()
-	return dduo
-}
-
-// SetDgrmResourceName sets the "dgrm_resource_name" field.
-func (dduo *DecisionDefUpdateOne) SetDgrmResourceName(s string) *DecisionDefUpdateOne {
-	dduo.mutation.SetDgrmResourceName(s)
-	return dduo
-}
-
-// SetNillableDgrmResourceName sets the "dgrm_resource_name" field if the given value is not nil.
-func (dduo *DecisionDefUpdateOne) SetNillableDgrmResourceName(s *string) *DecisionDefUpdateOne {
-	if s != nil {
-		dduo.SetDgrmResourceName(*s)
-	}
-	return dduo
-}
-
-// ClearDgrmResourceName clears the value of the "dgrm_resource_name" field.
-func (dduo *DecisionDefUpdateOne) ClearDgrmResourceName() *DecisionDefUpdateOne {
-	dduo.mutation.ClearDgrmResourceName()
-	return dduo
-}
-
 // SetReqDef sets the "req_def" edge to the DecisionReqDef entity.
 func (dduo *DecisionDefUpdateOne) SetReqDef(d *DecisionReqDef) *DecisionDefUpdateOne {
 	return dduo.SetReqDefID(d.ID)
@@ -654,7 +562,7 @@ func (dduo *DecisionDefUpdateOne) Select(field string, fields ...string) *Decisi
 
 // Save executes the query and returns the updated DecisionDef entity.
 func (dduo *DecisionDefUpdateOne) Save(ctx context.Context) (*DecisionDef, error) {
-	return withHooks[*DecisionDef, DecisionDefMutation](ctx, dduo.sqlSave, dduo.mutation, dduo.hooks)
+	return withHooks(ctx, dduo.sqlSave, dduo.mutation, dduo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -770,18 +678,6 @@ func (dduo *DecisionDefUpdateOne) sqlSave(ctx context.Context) (_node *DecisionD
 	if dduo.mutation.VersionTagCleared() {
 		_spec.ClearField(decisiondef.FieldVersionTag, field.TypeString)
 	}
-	if value, ok := dduo.mutation.ResourceName(); ok {
-		_spec.SetField(decisiondef.FieldResourceName, field.TypeString, value)
-	}
-	if dduo.mutation.ResourceNameCleared() {
-		_spec.ClearField(decisiondef.FieldResourceName, field.TypeString)
-	}
-	if value, ok := dduo.mutation.DgrmResourceName(); ok {
-		_spec.SetField(decisiondef.FieldDgrmResourceName, field.TypeString, value)
-	}
-	if dduo.mutation.DgrmResourceNameCleared() {
-		_spec.ClearField(decisiondef.FieldDgrmResourceName, field.TypeString)
-	}
 	if dduo.mutation.ReqDefCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -790,12 +686,10 @@ func (dduo *DecisionDefUpdateOne) sqlSave(ctx context.Context) (_node *DecisionD
 			Columns: []string{decisiondef.ReqDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = dduo.schemaConfig.DecisionDef
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := dduo.mutation.ReqDefIDs(); len(nodes) > 0 {
@@ -806,17 +700,17 @@ func (dduo *DecisionDefUpdateOne) sqlSave(ctx context.Context) (_node *DecisionD
 			Columns: []string{decisiondef.ReqDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decisionreqdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = dduo.schemaConfig.DecisionDef
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = dduo.schemaConfig.DecisionDef
+	ctx = internal.NewSchemaConfigContext(ctx, dduo.schemaConfig)
 	_node = &DecisionDef{config: dduo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

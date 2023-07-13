@@ -19,21 +19,25 @@ const (
 type UserTaskListen struct {
 	task     *ent.Task
 	exporter Exporter
-	err      error
 }
 
 func (ul *UserTaskListen) Listen(ctx workflow.Context) {
 	claimCh := workflow.GetSignalChannel(ctx, UserTaskClaimChannel)
 	reviewCh := workflow.GetSignalChannel(ctx, UserTaskReviewChannel)
+	logger := workflow.GetLogger(ctx)
 	for {
 		selector := workflow.NewSelector(ctx)
 		selector.AddReceive(claimCh, func(c workflow.ReceiveChannel, more bool) {
 			var signal ent.CreateIdentityLinkInput
 			c.Receive(ctx, &signal)
 			signal.TaskID = ul.task.ID
-			signal.OrgID = ul.task.OrgID
-			ul.err = ul.exporter.ClaimUserTask(context.Background(), &signal)
-			if ul.err != nil {
+			signal.TenantID = ul.task.TenantID
+			added, err := ul.exporter.ClaimUserTask(context.Background(), &signal)
+			if err != nil {
+				logger.Error("user task receive error:", "error", err, "userID", *signal.UserID)
+				return
+			}
+			if added {
 				ul.task.MemberCount++
 				ul.task.UnfinishedCount++
 			}
@@ -42,8 +46,9 @@ func (ul *UserTaskListen) Listen(ctx workflow.Context) {
 			var signal ent.UpdateIdentityLinkInput
 			c.Receive(ctx, &signal)
 			signal.TaskID = &ul.task.ID
-			ul.err = ul.exporter.Review(context.Background(), &signal, int(ul.task.UnfinishedCount))
-			if ul.err != nil {
+			err := ul.exporter.Review(context.Background(), &signal, int(ul.task.UnfinishedCount))
+			if err != nil {
+				logger.Error("user task review error:", "error", err, "userID", *signal.UserID)
 				return
 			}
 			ul.task.UnfinishedCount--
@@ -57,6 +62,7 @@ func (ul *UserTaskListen) Listen(ctx workflow.Context) {
 	}
 }
 
+// CheckComplete 检查任务是否完成. 如果任务有多实例, 则检查多实例的完成条件
 func (ul *UserTaskListen) CheckComplete(ctx context.Context, taskEle *bpmn.UserTask) (cp bool, err error) {
 	if mi := taskEle.MultiInstance; mi != nil {
 		cp, err = CompletionCondition(mi.CompletionCondition.Content, ul.task.MemberCount, ul.task.UnfinishedCount, ul.task.AgreeCount)

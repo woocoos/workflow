@@ -14,6 +14,8 @@ import (
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // TaskUpdate is the builder for updating Task entities.
@@ -290,8 +292,10 @@ func (tu *TaskUpdate) RemoveTaskIdentities(i ...*IdentityLink) *TaskUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (tu *TaskUpdate) Save(ctx context.Context) (int, error) {
-	tu.defaults()
-	return withHooks[int, TaskMutation](ctx, tu.sqlSave, tu.mutation, tu.hooks)
+	if err := tu.defaults(); err != nil {
+		return 0, err
+	}
+	return withHooks(ctx, tu.sqlSave, tu.mutation, tu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -317,11 +321,15 @@ func (tu *TaskUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (tu *TaskUpdate) defaults() {
+func (tu *TaskUpdate) defaults() error {
 	if _, ok := tu.mutation.UpdatedAt(); !ok {
+		if task.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized task.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := task.UpdateDefaultUpdatedAt()
 		tu.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -431,12 +439,10 @@ func (tu *TaskUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{task.ProcInstColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tu.schemaConfig.Task
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := tu.mutation.ProcInstIDs(); len(nodes) > 0 {
@@ -447,12 +453,10 @@ func (tu *TaskUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{task.ProcInstColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tu.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -466,12 +470,10 @@ func (tu *TaskUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tu.schemaConfig.IdentityLink
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := tu.mutation.RemovedTaskIdentitiesIDs(); len(nodes) > 0 && !tu.mutation.TaskIdentitiesCleared() {
@@ -482,12 +484,10 @@ func (tu *TaskUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tu.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -501,17 +501,17 @@ func (tu *TaskUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tu.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = tu.schemaConfig.Task
+	ctx = internal.NewSchemaConfigContext(ctx, tu.schemaConfig)
 	if n, err = sqlgraph.UpdateNodes(ctx, tu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{task.Label}
@@ -806,8 +806,10 @@ func (tuo *TaskUpdateOne) Select(field string, fields ...string) *TaskUpdateOne 
 
 // Save executes the query and returns the updated Task entity.
 func (tuo *TaskUpdateOne) Save(ctx context.Context) (*Task, error) {
-	tuo.defaults()
-	return withHooks[*Task, TaskMutation](ctx, tuo.sqlSave, tuo.mutation, tuo.hooks)
+	if err := tuo.defaults(); err != nil {
+		return nil, err
+	}
+	return withHooks(ctx, tuo.sqlSave, tuo.mutation, tuo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -833,11 +835,15 @@ func (tuo *TaskUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (tuo *TaskUpdateOne) defaults() {
+func (tuo *TaskUpdateOne) defaults() error {
 	if _, ok := tuo.mutation.UpdatedAt(); !ok {
+		if task.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized task.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := task.UpdateDefaultUpdatedAt()
 		tuo.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -964,12 +970,10 @@ func (tuo *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) 
 			Columns: []string{task.ProcInstColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tuo.schemaConfig.Task
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := tuo.mutation.ProcInstIDs(); len(nodes) > 0 {
@@ -980,12 +984,10 @@ func (tuo *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) 
 			Columns: []string{task.ProcInstColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procinst.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tuo.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -999,12 +1001,10 @@ func (tuo *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) 
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tuo.schemaConfig.IdentityLink
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := tuo.mutation.RemovedTaskIdentitiesIDs(); len(nodes) > 0 && !tuo.mutation.TaskIdentitiesCleared() {
@@ -1015,12 +1015,10 @@ func (tuo *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) 
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tuo.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -1034,17 +1032,17 @@ func (tuo *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) 
 			Columns: []string{task.TaskIdentitiesColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: identitylink.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(identitylink.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = tuo.schemaConfig.IdentityLink
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.Node.Schema = tuo.schemaConfig.Task
+	ctx = internal.NewSchemaConfigContext(ctx, tuo.schemaConfig)
 	_node = &Task{config: tuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

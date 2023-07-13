@@ -9,26 +9,59 @@ import (
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
 
 type (
+	Option func(*BPMN)
+
 	// BPMN is a workflow engine for bpmn
 	BPMN struct {
 		// worker id
-		Id       string
-		Exporter Exporter
-		Handlers *HandlerFuncMap
+		Id          string
+		Exporter    Exporter
+		Handlers    *HandlerFuncMap
+		Activity    *BpmnActivity
+		ResourceDir string
 	}
 )
 
-func NewBPMN(id string, exporter Exporter) *BPMN {
-	return &BPMN{
-		Id:       id,
-		Exporter: exporter,
-		Handlers: NewHandlerFuncMap(id),
+// WithResourceDir 指定资源目录,在工作流中必须指定
+func WithResourceDir(dir string) Option {
+	return func(bp *BPMN) {
+		bp.ResourceDir = dir
 	}
+}
+
+// WithExporter 指定外部相关接口实现.
+func WithExporter(exporter Exporter) Option {
+	return func(bp *BPMN) {
+		bp.Exporter = exporter
+	}
+}
+
+func WithID(id string) Option {
+	return func(bp *BPMN) {
+		bp.Id = id
+	}
+}
+
+func NewBPMN(opts ...Option) *BPMN {
+	bp := &BPMN{}
+	bp.Activity = &BpmnActivity{
+		Engine: bp,
+	}
+	for _, opt := range opts {
+		opt(bp)
+	}
+	bp.Handlers = NewHandlerFuncMap(bp.Id)
+	if bp.Exporter == nil {
+
+	}
+	return bp
 }
 
 func DefaultActivityOption() workflow.ActivityOptions {
@@ -155,7 +188,7 @@ func (bp *BPMN) handleServiceTask(ctx workflow.Context, pi *InstanceRequest, tas
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	var variables bpmn.Mappings
-	err := workflow.ExecuteActivity(ctx, bp.ServiceTaskActivity, ServiceTaskActivityRequest{
+	err := workflow.ExecuteActivity(ctx, bp.Activity.ServiceTaskActivity, ServiceTaskActivityRequest{
 		InstanceRequest: pi,
 		Element:         taskEle,
 	}).Get(ctx, &variables)
@@ -179,7 +212,7 @@ func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *InstanceRequest, taskEl
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	var task ent.Task
-	err := workflow.ExecuteActivity(ctx, bp.CreateUserTaskActivity, UserTaskActivityRequest{
+	err := workflow.ExecuteActivity(ctx, bp.Activity.CreateUserTaskActivity, UserTaskActivityRequest{
 		InstanceRequest: pi,
 		Element:         taskEle,
 	}).Get(ctx, &task)
@@ -207,47 +240,16 @@ func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *InstanceRequest, taskEl
 	return nil
 }
 
-func (bp *BPMN) ServiceTaskActivity(ctx context.Context, req ServiceTaskActivityRequest) (bpmn.Mappings, error) {
-	typename := ""
-	if req.Element.TaskDefinition != nil {
-		typename = req.Element.TaskDefinition.TypeName
-	}
-	output := make(bpmn.Mappings)
-	hout, err := bp.Handlers.RunHandler(ctx, typename, req.InstanceRequest.Variables)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range hout {
-		req.InstanceRequest.Variables[k] = v
-	}
-	if len(req.Element.Outputs) > 0 {
-		for _, ele := range req.Element.Outputs {
-			err = ele.OutputTarget(req.InstanceRequest.Variables, output)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		output = hout
-	}
-	return output, nil
-}
-
-func (bp *BPMN) CreateUserTaskActivity(ctx context.Context, req UserTaskActivityRequest) (*ent.Task, error) {
-	return bp.Exporter.CreateUserTask(ctx, req.InstanceRequest, req.Element)
-}
-
 func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *InstanceRequest, el *bpmn.CallActivity) error {
 	logger := workflow.GetLogger(ctx)
 	cdf, err := bp.Exporter.GetProcDef(context.Background(), &GetProcDefRequest{
 		ProcDefKey: el.CalledElement.ProcessId,
-		OrgID:      pi.OrgID,
+		TenantID:   pi.TenantID,
 	})
 	cir := InstanceRequest{
-		ProcInst:     pi.ProcInst,
-		ProcDefKey:   cdf.Key,
-		ResourceName: cdf.ResourceName,
-		ResourceData: cdf.ResourceData,
+		ProcInst:    pi.ProcInst,
+		ProcDefKey:  cdf.Key,
+		ResourceKey: cdf.ResourceKey,
 	}
 	if el.CalledElement.PropagateAllChildVariables {
 		cir.Variables = pi.Variables
@@ -275,13 +277,14 @@ func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *InstanceRequest, el
 	return err
 }
 
-func loadDMN(cdf *ent.DecisionReqDef) (*DMNLoader, error) {
+func loadDMN(resourceDir string, cdf *ent.DecisionReqDef) (*DMNLoader, error) {
 	dmn := NewDMNLoader(strconv.Itoa(cdf.ID))
-	if len(cdf.ResourceData) != 0 {
-		err := dmn.Load(cdf.ResourceData)
-		if err != nil {
-			return nil, err
-		}
+	bs, err := os.ReadFile(filepath.Join(resourceDir, cdf.ResourceKey))
+	if err != nil {
+		return nil, err
+	}
+	if err := dmn.Load(bs); err != nil {
+		return nil, err
 	}
 	// TODO load from other ,cache
 	return dmn, nil
@@ -294,7 +297,7 @@ func (bp *BPMN) handleBusinessRuleTask(ctx workflow.Context, pi *InstanceRequest
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	var variables bpmn.Mappings
-	err := workflow.ExecuteActivity(ctx, bp.BusinessRuleTaskActivity, BusinessRuleTaskActivityRequest{
+	err := workflow.ExecuteActivity(ctx, bp.Activity.BusinessRuleTaskActivity, BusinessRuleTaskActivityRequest{
 		InstanceRequest: pi,
 		Element:         el,
 	}).Get(ctx, &variables)
@@ -305,25 +308,4 @@ func (bp *BPMN) handleBusinessRuleTask(ctx workflow.Context, pi *InstanceRequest
 		pi.Variables[k] = v
 	}
 	return nil
-}
-
-func (bp *BPMN) BusinessRuleTaskActivity(ctx context.Context, req BusinessRuleTaskActivityRequest) (bpmn.Mappings, error) {
-	//logger := workflow.GetLogger(ctx)
-	if req.Element.CalledDecision == nil {
-		return nil, fmt.Errorf("called decision is nil: %s", req.Element.Id)
-	}
-
-	cdf, err := bp.Exporter.GetDecisionReqDef(context.Background(), &GetDecisionReqDefRequest{
-		DecisionDefKey: req.Element.CalledDecision.DecisionId,
-		OrgID:          req.InstanceRequest.OrgID,
-	})
-	loader, err := loadDMN(cdf)
-	if err != nil {
-		return nil, err
-	}
-	dmn := DMN{
-		Id: strconv.Itoa(cdf.ID),
-	}
-	ret, err := dmn.StartInstance(loader, req.Element, req.InstanceRequest)
-	return ret, err
 }

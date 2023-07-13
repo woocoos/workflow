@@ -7,6 +7,10 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -14,6 +18,8 @@ const (
 	Label = "task"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldProcInstID holds the string denoting the proc_inst_id field in the database.
 	FieldProcInstID = "proc_inst_id"
 	// FieldProcDefID holds the string denoting the proc_def_id field in the database.
@@ -40,8 +46,6 @@ const (
 	FieldKind = "kind"
 	// FieldSequential holds the string denoting the sequential field in the database.
 	FieldSequential = "sequential"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -73,6 +77,7 @@ const (
 // Columns holds all SQL columns for task fields.
 var Columns = []string{
 	FieldID,
+	FieldTenantID,
 	FieldProcInstID,
 	FieldProcDefID,
 	FieldExecutionID,
@@ -86,7 +91,6 @@ var Columns = []string{
 	FieldAgreeCount,
 	FieldKind,
 	FieldSequential,
-	FieldOrgID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldStatus,
@@ -102,7 +106,14 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+// Note that the variables below are initialized by the runtime
+// package on the initialization of the application. Therefore,
+// it should be imported in the main as follows:
+//
+//	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
+	Hooks        [1]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultParentID holds the default value on creation for the "parent_id" field.
 	DefaultParentID int
 	// DefaultAgreeCount holds the default value on creation for the "agree_count" field.
@@ -171,6 +182,134 @@ func StatusValidator(s Status) error {
 	default:
 		return fmt.Errorf("task: invalid enum value for status field: %q", s)
 	}
+}
+
+// OrderOption defines the ordering options for the Task queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByProcInstID orders the results by the proc_inst_id field.
+func ByProcInstID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProcInstID, opts...).ToFunc()
+}
+
+// ByProcDefID orders the results by the proc_def_id field.
+func ByProcDefID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProcDefID, opts...).ToFunc()
+}
+
+// ByExecutionID orders the results by the execution_id field.
+func ByExecutionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExecutionID, opts...).ToFunc()
+}
+
+// ByRunID orders the results by the run_id field.
+func ByRunID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRunID, opts...).ToFunc()
+}
+
+// ByTaskDefKey orders the results by the task_def_key field.
+func ByTaskDefKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTaskDefKey, opts...).ToFunc()
+}
+
+// ByParentID orders the results by the parent_id field.
+func ByParentID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldParentID, opts...).ToFunc()
+}
+
+// ByComments orders the results by the comments field.
+func ByComments(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldComments, opts...).ToFunc()
+}
+
+// ByAssignee orders the results by the assignee field.
+func ByAssignee(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAssignee, opts...).ToFunc()
+}
+
+// ByMemberCount orders the results by the member_count field.
+func ByMemberCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMemberCount, opts...).ToFunc()
+}
+
+// ByUnfinishedCount orders the results by the unfinished_count field.
+func ByUnfinishedCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUnfinishedCount, opts...).ToFunc()
+}
+
+// ByAgreeCount orders the results by the agree_count field.
+func ByAgreeCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAgreeCount, opts...).ToFunc()
+}
+
+// ByKind orders the results by the kind field.
+func ByKind(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKind, opts...).ToFunc()
+}
+
+// BySequential orders the results by the sequential field.
+func BySequential(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSequential, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByProcInstField orders the results by proc_inst field.
+func ByProcInstField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProcInstStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByTaskIdentitiesCount orders the results by task_identities count.
+func ByTaskIdentitiesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTaskIdentitiesStep(), opts...)
+	}
+}
+
+// ByTaskIdentities orders the results by task_identities terms.
+func ByTaskIdentities(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTaskIdentitiesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProcInstStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProcInstInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ProcInstTable, ProcInstColumn),
+	)
+}
+func newTaskIdentitiesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TaskIdentitiesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TaskIdentitiesTable, TaskIdentitiesColumn),
+	)
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

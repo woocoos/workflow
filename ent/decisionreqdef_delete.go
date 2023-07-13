@@ -8,8 +8,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/decisionreqdef"
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DecisionReqDefDelete is the builder for deleting a DecisionReqDef entity.
@@ -27,7 +29,7 @@ func (drdd *DecisionReqDefDelete) Where(ps ...predicate.DecisionReqDef) *Decisio
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (drdd *DecisionReqDefDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks[int, DecisionReqDefMutation](ctx, drdd.sqlExec, drdd.mutation, drdd.hooks)
+	return withHooks(ctx, drdd.sqlExec, drdd.mutation, drdd.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -41,6 +43,8 @@ func (drdd *DecisionReqDefDelete) ExecX(ctx context.Context) int {
 
 func (drdd *DecisionReqDefDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(decisionreqdef.Table, sqlgraph.NewFieldSpec(decisionreqdef.FieldID, field.TypeInt))
+	_spec.Node.Schema = drdd.schemaConfig.DecisionReqDef
+	ctx = internal.NewSchemaConfigContext(ctx, drdd.schemaConfig)
 	if ps := drdd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

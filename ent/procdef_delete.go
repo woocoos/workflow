@@ -9,6 +9,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/predicate"
+
+	"github.com/woocoos/workflow/ent/internal"
 	"github.com/woocoos/workflow/ent/procdef"
 )
 
@@ -27,7 +29,7 @@ func (pdd *ProcDefDelete) Where(ps ...predicate.ProcDef) *ProcDefDelete {
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (pdd *ProcDefDelete) Exec(ctx context.Context) (int, error) {
-	return withHooks[int, ProcDefMutation](ctx, pdd.sqlExec, pdd.mutation, pdd.hooks)
+	return withHooks(ctx, pdd.sqlExec, pdd.mutation, pdd.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -41,6 +43,8 @@ func (pdd *ProcDefDelete) ExecX(ctx context.Context) int {
 
 func (pdd *ProcDefDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := sqlgraph.NewDeleteSpec(procdef.Table, sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt))
+	_spec.Node.Schema = pdd.schemaConfig.ProcDef
+	ctx = internal.NewSchemaConfigContext(ctx, pdd.schemaConfig)
 	if ps := pdd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {

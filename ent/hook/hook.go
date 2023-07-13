@@ -57,6 +57,54 @@ func (f IdentityLinkFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.IdentityLinkMutation", m)
 }
 
+// The OrgAppFunc type is an adapter to allow the use of ordinary
+// function as OrgApp mutator.
+type OrgAppFunc func(context.Context, *ent.OrgAppMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OrgAppFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OrgAppMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrgAppMutation", m)
+}
+
+// The OrgRoleFunc type is an adapter to allow the use of ordinary
+// function as OrgRole mutator.
+type OrgRoleFunc func(context.Context, *ent.OrgRoleMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OrgRoleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OrgRoleMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrgRoleMutation", m)
+}
+
+// The OrgRoleUserFunc type is an adapter to allow the use of ordinary
+// function as OrgRoleUser mutator.
+type OrgRoleUserFunc func(context.Context, *ent.OrgRoleUserMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OrgRoleUserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OrgRoleUserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrgRoleUserMutation", m)
+}
+
+// The OrgUserFunc type is an adapter to allow the use of ordinary
+// function as OrgUser mutator.
+type OrgUserFunc func(context.Context, *ent.OrgUserMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f OrgUserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.OrgUserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrgUserMutation", m)
+}
+
 // The ProcDefFunc type is an adapter to allow the use of ordinary
 // function as ProcDef mutator.
 type ProcDefFunc func(context.Context, *ent.ProcDefMutation) (ent.Value, error)

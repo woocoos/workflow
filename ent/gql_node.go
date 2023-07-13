@@ -18,6 +18,8 @@ import (
 	"github.com/woocoos/workflow/ent/decisionreqdef"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/ent/orgrole"
+	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
 	"github.com/woocoos/workflow/ent/task"
@@ -29,26 +31,50 @@ type Noder interface {
 	IsNode()
 }
 
-// IsNode implements the Node interface check for GQLGen.
-func (n *DecisionDef) IsNode() {}
+var decisiondefImplementors = []string{"DecisionDef", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *DecisionReqDef) IsNode() {}
+func (*DecisionDef) IsNode() {}
+
+var decisionreqdefImplementors = []string{"DecisionReqDef", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *Deployment) IsNode() {}
+func (*DecisionReqDef) IsNode() {}
+
+var deploymentImplementors = []string{"Deployment", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *IdentityLink) IsNode() {}
+func (*Deployment) IsNode() {}
+
+var identitylinkImplementors = []string{"IdentityLink", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *ProcDef) IsNode() {}
+func (*IdentityLink) IsNode() {}
+
+var orgroleImplementors = []string{"OrgRole", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *ProcInst) IsNode() {}
+func (*OrgRole) IsNode() {}
+
+var orguserImplementors = []string{"OrgUser", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
-func (n *Task) IsNode() {}
+func (*OrgUser) IsNode() {}
+
+var procdefImplementors = []string{"ProcDef", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ProcDef) IsNode() {}
+
+var procinstImplementors = []string{"ProcInst", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*ProcInst) IsNode() {}
+
+var taskImplementors = []string{"Task", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Task) IsNode() {}
 
 var errNodeInvalidID = &NotFoundError{"node"}
 
@@ -111,7 +137,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case decisiondef.Table:
 		query := c.DecisionDef.Query().
 			Where(decisiondef.ID(id))
-		query, err := query.CollectFields(ctx, "DecisionDef")
+		query, err := query.CollectFields(ctx, decisiondefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +149,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case decisionreqdef.Table:
 		query := c.DecisionReqDef.Query().
 			Where(decisionreqdef.ID(id))
-		query, err := query.CollectFields(ctx, "DecisionReqDef")
+		query, err := query.CollectFields(ctx, decisionreqdefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -135,7 +161,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case deployment.Table:
 		query := c.Deployment.Query().
 			Where(deployment.ID(id))
-		query, err := query.CollectFields(ctx, "Deployment")
+		query, err := query.CollectFields(ctx, deploymentImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +173,31 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case identitylink.Table:
 		query := c.IdentityLink.Query().
 			Where(identitylink.ID(id))
-		query, err := query.CollectFields(ctx, "IdentityLink")
+		query, err := query.CollectFields(ctx, identitylinkImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		n, err := query.Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
+	case orgrole.Table:
+		query := c.OrgRole.Query().
+			Where(orgrole.ID(id))
+		query, err := query.CollectFields(ctx, orgroleImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		n, err := query.Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
+	case orguser.Table:
+		query := c.OrgUser.Query().
+			Where(orguser.ID(id))
+		query, err := query.CollectFields(ctx, orguserImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +209,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case procdef.Table:
 		query := c.ProcDef.Query().
 			Where(procdef.ID(id))
-		query, err := query.CollectFields(ctx, "ProcDef")
+		query, err := query.CollectFields(ctx, procdefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +221,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case procinst.Table:
 		query := c.ProcInst.Query().
 			Where(procinst.ID(id))
-		query, err := query.CollectFields(ctx, "ProcInst")
+		query, err := query.CollectFields(ctx, procinstImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +233,7 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 	case task.Table:
 		query := c.Task.Query().
 			Where(task.ID(id))
-		query, err := query.CollectFields(ctx, "Task")
+		query, err := query.CollectFields(ctx, taskImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -268,7 +318,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case decisiondef.Table:
 		query := c.DecisionDef.Query().
 			Where(decisiondef.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "DecisionDef")
+		query, err := query.CollectFields(ctx, decisiondefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +334,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case decisionreqdef.Table:
 		query := c.DecisionReqDef.Query().
 			Where(decisionreqdef.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "DecisionReqDef")
+		query, err := query.CollectFields(ctx, decisionreqdefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +350,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case deployment.Table:
 		query := c.Deployment.Query().
 			Where(deployment.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "Deployment")
+		query, err := query.CollectFields(ctx, deploymentImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +366,39 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case identitylink.Table:
 		query := c.IdentityLink.Query().
 			Where(identitylink.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "IdentityLink")
+		query, err := query.CollectFields(ctx, identitylinkImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case orgrole.Table:
+		query := c.OrgRole.Query().
+			Where(orgrole.IDIn(ids...))
+		query, err := query.CollectFields(ctx, orgroleImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case orguser.Table:
+		query := c.OrgUser.Query().
+			Where(orguser.IDIn(ids...))
+		query, err := query.CollectFields(ctx, orguserImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -332,7 +414,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case procdef.Table:
 		query := c.ProcDef.Query().
 			Where(procdef.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "ProcDef")
+		query, err := query.CollectFields(ctx, procdefImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -348,7 +430,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case procinst.Table:
 		query := c.ProcInst.Query().
 			Where(procinst.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "ProcInst")
+		query, err := query.CollectFields(ctx, procinstImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +446,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	case task.Table:
 		query := c.Task.Query().
 			Where(task.IDIn(ids...))
-		query, err := query.CollectFields(ctx, "Task")
+		query, err := query.CollectFields(ctx, taskImplementors...)
 		if err != nil {
 			return nil, err
 		}

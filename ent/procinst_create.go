@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/woocoos/workflow/ent/procdef"
@@ -20,6 +21,7 @@ type ProcInstCreate struct {
 	config
 	mutation *ProcInstMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreatedBy sets the "created_by" field.
@@ -70,15 +72,15 @@ func (pic *ProcInstCreate) SetNillableUpdatedAt(t *time.Time) *ProcInstCreate {
 	return pic
 }
 
-// SetProcDefID sets the "proc_def_id" field.
-func (pic *ProcInstCreate) SetProcDefID(i int) *ProcInstCreate {
-	pic.mutation.SetProcDefID(i)
+// SetTenantID sets the "tenant_id" field.
+func (pic *ProcInstCreate) SetTenantID(i int) *ProcInstCreate {
+	pic.mutation.SetTenantID(i)
 	return pic
 }
 
-// SetOrgID sets the "org_id" field.
-func (pic *ProcInstCreate) SetOrgID(i int) *ProcInstCreate {
-	pic.mutation.SetOrgID(i)
+// SetProcDefID sets the "proc_def_id" field.
+func (pic *ProcInstCreate) SetProcDefID(i int) *ProcInstCreate {
+	pic.mutation.SetProcDefID(i)
 	return pic
 }
 
@@ -248,7 +250,7 @@ func (pic *ProcInstCreate) Save(ctx context.Context) (*ProcInst, error) {
 	if err := pic.defaults(); err != nil {
 		return nil, err
 	}
-	return withHooks[*ProcInst, ProcInstMutation](ctx, pic.sqlSave, pic.mutation, pic.hooks)
+	return withHooks(ctx, pic.sqlSave, pic.mutation, pic.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -307,11 +309,11 @@ func (pic *ProcInstCreate) check() error {
 	if _, ok := pic.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ProcInst.created_at"`)}
 	}
+	if _, ok := pic.mutation.TenantID(); !ok {
+		return &ValidationError{Name: "tenant_id", err: errors.New(`ent: missing required field "ProcInst.tenant_id"`)}
+	}
 	if _, ok := pic.mutation.ProcDefID(); !ok {
 		return &ValidationError{Name: "proc_def_id", err: errors.New(`ent: missing required field "ProcInst.proc_def_id"`)}
-	}
-	if _, ok := pic.mutation.OrgID(); !ok {
-		return &ValidationError{Name: "org_id", err: errors.New(`ent: missing required field "ProcInst.org_id"`)}
 	}
 	if _, ok := pic.mutation.AppID(); !ok {
 		return &ValidationError{Name: "app_id", err: errors.New(`ent: missing required field "ProcInst.app_id"`)}
@@ -364,6 +366,8 @@ func (pic *ProcInstCreate) createSpec() (*ProcInst, *sqlgraph.CreateSpec) {
 		_node = &ProcInst{config: pic.config}
 		_spec = sqlgraph.NewCreateSpec(procinst.Table, sqlgraph.NewFieldSpec(procinst.FieldID, field.TypeInt))
 	)
+	_spec.Schema = pic.schemaConfig.ProcInst
+	_spec.OnConflict = pic.conflict
 	if id, ok := pic.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -384,9 +388,9 @@ func (pic *ProcInstCreate) createSpec() (*ProcInst, *sqlgraph.CreateSpec) {
 		_spec.SetField(procinst.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := pic.mutation.OrgID(); ok {
-		_spec.SetField(procinst.FieldOrgID, field.TypeInt, value)
-		_node.OrgID = value
+	if value, ok := pic.mutation.TenantID(); ok {
+		_spec.SetField(procinst.FieldTenantID, field.TypeInt, value)
+		_node.TenantID = value
 	}
 	if value, ok := pic.mutation.AppID(); ok {
 		_spec.SetField(procinst.FieldAppID, field.TypeInt, value)
@@ -440,12 +444,10 @@ func (pic *ProcInstCreate) createSpec() (*ProcInst, *sqlgraph.CreateSpec) {
 			Columns: []string{procinst.ProcDefColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: procdef.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(procdef.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pic.schemaConfig.ProcInst
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -460,12 +462,10 @@ func (pic *ProcInstCreate) createSpec() (*ProcInst, *sqlgraph.CreateSpec) {
 			Columns: []string{procinst.TasksColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: task.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeInt),
 			},
 		}
+		edge.Schema = pic.schemaConfig.Task
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
@@ -474,10 +474,660 @@ func (pic *ProcInstCreate) createSpec() (*ProcInst, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.ProcInst.Create().
+//		SetCreatedBy(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ProcInstUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (pic *ProcInstCreate) OnConflict(opts ...sql.ConflictOption) *ProcInstUpsertOne {
+	pic.conflict = opts
+	return &ProcInstUpsertOne{
+		create: pic,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (pic *ProcInstCreate) OnConflictColumns(columns ...string) *ProcInstUpsertOne {
+	pic.conflict = append(pic.conflict, sql.ConflictColumns(columns...))
+	return &ProcInstUpsertOne{
+		create: pic,
+	}
+}
+
+type (
+	// ProcInstUpsertOne is the builder for "upsert"-ing
+	//  one ProcInst node.
+	ProcInstUpsertOne struct {
+		create *ProcInstCreate
+	}
+
+	// ProcInstUpsert is the "OnConflict" setter.
+	ProcInstUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcInstUpsert) SetUpdatedBy(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldUpdatedBy, v)
+	return u
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateUpdatedBy() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldUpdatedBy)
+	return u
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcInstUpsert) AddUpdatedBy(v int) *ProcInstUpsert {
+	u.Add(procinst.FieldUpdatedBy, v)
+	return u
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcInstUpsert) ClearUpdatedBy() *ProcInstUpsert {
+	u.SetNull(procinst.FieldUpdatedBy)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcInstUpsert) SetUpdatedAt(v time.Time) *ProcInstUpsert {
+	u.Set(procinst.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateUpdatedAt() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldUpdatedAt)
+	return u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcInstUpsert) ClearUpdatedAt() *ProcInstUpsert {
+	u.SetNull(procinst.FieldUpdatedAt)
+	return u
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *ProcInstUpsert) SetProcDefID(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldProcDefID, v)
+	return u
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateProcDefID() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldProcDefID)
+	return u
+}
+
+// SetBusinessKey sets the "business_key" field.
+func (u *ProcInstUpsert) SetBusinessKey(v string) *ProcInstUpsert {
+	u.Set(procinst.FieldBusinessKey, v)
+	return u
+}
+
+// UpdateBusinessKey sets the "business_key" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateBusinessKey() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldBusinessKey)
+	return u
+}
+
+// SetStartTime sets the "start_time" field.
+func (u *ProcInstUpsert) SetStartTime(v time.Time) *ProcInstUpsert {
+	u.Set(procinst.FieldStartTime, v)
+	return u
+}
+
+// UpdateStartTime sets the "start_time" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateStartTime() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldStartTime)
+	return u
+}
+
+// SetEndTime sets the "end_time" field.
+func (u *ProcInstUpsert) SetEndTime(v time.Time) *ProcInstUpsert {
+	u.Set(procinst.FieldEndTime, v)
+	return u
+}
+
+// UpdateEndTime sets the "end_time" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateEndTime() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldEndTime)
+	return u
+}
+
+// ClearEndTime clears the value of the "end_time" field.
+func (u *ProcInstUpsert) ClearEndTime() *ProcInstUpsert {
+	u.SetNull(procinst.FieldEndTime)
+	return u
+}
+
+// SetDuration sets the "duration" field.
+func (u *ProcInstUpsert) SetDuration(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldDuration, v)
+	return u
+}
+
+// UpdateDuration sets the "duration" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateDuration() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldDuration)
+	return u
+}
+
+// AddDuration adds v to the "duration" field.
+func (u *ProcInstUpsert) AddDuration(v int) *ProcInstUpsert {
+	u.Add(procinst.FieldDuration, v)
+	return u
+}
+
+// ClearDuration clears the value of the "duration" field.
+func (u *ProcInstUpsert) ClearDuration() *ProcInstUpsert {
+	u.SetNull(procinst.FieldDuration)
+	return u
+}
+
+// SetStartUserID sets the "start_user_id" field.
+func (u *ProcInstUpsert) SetStartUserID(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldStartUserID, v)
+	return u
+}
+
+// UpdateStartUserID sets the "start_user_id" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateStartUserID() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldStartUserID)
+	return u
+}
+
+// AddStartUserID adds v to the "start_user_id" field.
+func (u *ProcInstUpsert) AddStartUserID(v int) *ProcInstUpsert {
+	u.Add(procinst.FieldStartUserID, v)
+	return u
+}
+
+// SetSupperInstanceID sets the "supper_instance_id" field.
+func (u *ProcInstUpsert) SetSupperInstanceID(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldSupperInstanceID, v)
+	return u
+}
+
+// UpdateSupperInstanceID sets the "supper_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateSupperInstanceID() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldSupperInstanceID)
+	return u
+}
+
+// AddSupperInstanceID adds v to the "supper_instance_id" field.
+func (u *ProcInstUpsert) AddSupperInstanceID(v int) *ProcInstUpsert {
+	u.Add(procinst.FieldSupperInstanceID, v)
+	return u
+}
+
+// ClearSupperInstanceID clears the value of the "supper_instance_id" field.
+func (u *ProcInstUpsert) ClearSupperInstanceID() *ProcInstUpsert {
+	u.SetNull(procinst.FieldSupperInstanceID)
+	return u
+}
+
+// SetRootInstanceID sets the "root_instance_id" field.
+func (u *ProcInstUpsert) SetRootInstanceID(v int) *ProcInstUpsert {
+	u.Set(procinst.FieldRootInstanceID, v)
+	return u
+}
+
+// UpdateRootInstanceID sets the "root_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateRootInstanceID() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldRootInstanceID)
+	return u
+}
+
+// AddRootInstanceID adds v to the "root_instance_id" field.
+func (u *ProcInstUpsert) AddRootInstanceID(v int) *ProcInstUpsert {
+	u.Add(procinst.FieldRootInstanceID, v)
+	return u
+}
+
+// ClearRootInstanceID clears the value of the "root_instance_id" field.
+func (u *ProcInstUpsert) ClearRootInstanceID() *ProcInstUpsert {
+	u.SetNull(procinst.FieldRootInstanceID)
+	return u
+}
+
+// SetDeletedTime sets the "deleted_time" field.
+func (u *ProcInstUpsert) SetDeletedTime(v time.Time) *ProcInstUpsert {
+	u.Set(procinst.FieldDeletedTime, v)
+	return u
+}
+
+// UpdateDeletedTime sets the "deleted_time" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateDeletedTime() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldDeletedTime)
+	return u
+}
+
+// ClearDeletedTime clears the value of the "deleted_time" field.
+func (u *ProcInstUpsert) ClearDeletedTime() *ProcInstUpsert {
+	u.SetNull(procinst.FieldDeletedTime)
+	return u
+}
+
+// SetDeletedReason sets the "deleted_reason" field.
+func (u *ProcInstUpsert) SetDeletedReason(v string) *ProcInstUpsert {
+	u.Set(procinst.FieldDeletedReason, v)
+	return u
+}
+
+// UpdateDeletedReason sets the "deleted_reason" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateDeletedReason() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldDeletedReason)
+	return u
+}
+
+// ClearDeletedReason clears the value of the "deleted_reason" field.
+func (u *ProcInstUpsert) ClearDeletedReason() *ProcInstUpsert {
+	u.SetNull(procinst.FieldDeletedReason)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcInstUpsert) SetStatus(v procinst.Status) *ProcInstUpsert {
+	u.Set(procinst.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcInstUpsert) UpdateStatus() *ProcInstUpsert {
+	u.SetExcluded(procinst.FieldStatus)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(procinst.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *ProcInstUpsertOne) UpdateNewValues() *ProcInstUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(procinst.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedBy(); exists {
+			s.SetIgnore(procinst.FieldCreatedBy)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(procinst.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.TenantID(); exists {
+			s.SetIgnore(procinst.FieldTenantID)
+		}
+		if _, exists := u.create.mutation.AppID(); exists {
+			s.SetIgnore(procinst.FieldAppID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *ProcInstUpsertOne) Ignore() *ProcInstUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ProcInstUpsertOne) DoNothing() *ProcInstUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ProcInstCreate.OnConflict
+// documentation for more info.
+func (u *ProcInstUpsertOne) Update(set func(*ProcInstUpsert)) *ProcInstUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ProcInstUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcInstUpsertOne) SetUpdatedBy(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcInstUpsertOne) AddUpdatedBy(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateUpdatedBy() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcInstUpsertOne) ClearUpdatedBy() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcInstUpsertOne) SetUpdatedAt(v time.Time) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateUpdatedAt() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcInstUpsertOne) ClearUpdatedAt() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *ProcInstUpsertOne) SetProcDefID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetProcDefID(v)
+	})
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateProcDefID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateProcDefID()
+	})
+}
+
+// SetBusinessKey sets the "business_key" field.
+func (u *ProcInstUpsertOne) SetBusinessKey(v string) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetBusinessKey(v)
+	})
+}
+
+// UpdateBusinessKey sets the "business_key" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateBusinessKey() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateBusinessKey()
+	})
+}
+
+// SetStartTime sets the "start_time" field.
+func (u *ProcInstUpsertOne) SetStartTime(v time.Time) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStartTime(v)
+	})
+}
+
+// UpdateStartTime sets the "start_time" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateStartTime() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStartTime()
+	})
+}
+
+// SetEndTime sets the "end_time" field.
+func (u *ProcInstUpsertOne) SetEndTime(v time.Time) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetEndTime(v)
+	})
+}
+
+// UpdateEndTime sets the "end_time" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateEndTime() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateEndTime()
+	})
+}
+
+// ClearEndTime clears the value of the "end_time" field.
+func (u *ProcInstUpsertOne) ClearEndTime() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearEndTime()
+	})
+}
+
+// SetDuration sets the "duration" field.
+func (u *ProcInstUpsertOne) SetDuration(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDuration(v)
+	})
+}
+
+// AddDuration adds v to the "duration" field.
+func (u *ProcInstUpsertOne) AddDuration(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddDuration(v)
+	})
+}
+
+// UpdateDuration sets the "duration" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateDuration() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDuration()
+	})
+}
+
+// ClearDuration clears the value of the "duration" field.
+func (u *ProcInstUpsertOne) ClearDuration() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDuration()
+	})
+}
+
+// SetStartUserID sets the "start_user_id" field.
+func (u *ProcInstUpsertOne) SetStartUserID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStartUserID(v)
+	})
+}
+
+// AddStartUserID adds v to the "start_user_id" field.
+func (u *ProcInstUpsertOne) AddStartUserID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddStartUserID(v)
+	})
+}
+
+// UpdateStartUserID sets the "start_user_id" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateStartUserID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStartUserID()
+	})
+}
+
+// SetSupperInstanceID sets the "supper_instance_id" field.
+func (u *ProcInstUpsertOne) SetSupperInstanceID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetSupperInstanceID(v)
+	})
+}
+
+// AddSupperInstanceID adds v to the "supper_instance_id" field.
+func (u *ProcInstUpsertOne) AddSupperInstanceID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddSupperInstanceID(v)
+	})
+}
+
+// UpdateSupperInstanceID sets the "supper_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateSupperInstanceID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateSupperInstanceID()
+	})
+}
+
+// ClearSupperInstanceID clears the value of the "supper_instance_id" field.
+func (u *ProcInstUpsertOne) ClearSupperInstanceID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearSupperInstanceID()
+	})
+}
+
+// SetRootInstanceID sets the "root_instance_id" field.
+func (u *ProcInstUpsertOne) SetRootInstanceID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetRootInstanceID(v)
+	})
+}
+
+// AddRootInstanceID adds v to the "root_instance_id" field.
+func (u *ProcInstUpsertOne) AddRootInstanceID(v int) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddRootInstanceID(v)
+	})
+}
+
+// UpdateRootInstanceID sets the "root_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateRootInstanceID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateRootInstanceID()
+	})
+}
+
+// ClearRootInstanceID clears the value of the "root_instance_id" field.
+func (u *ProcInstUpsertOne) ClearRootInstanceID() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearRootInstanceID()
+	})
+}
+
+// SetDeletedTime sets the "deleted_time" field.
+func (u *ProcInstUpsertOne) SetDeletedTime(v time.Time) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDeletedTime(v)
+	})
+}
+
+// UpdateDeletedTime sets the "deleted_time" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateDeletedTime() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDeletedTime()
+	})
+}
+
+// ClearDeletedTime clears the value of the "deleted_time" field.
+func (u *ProcInstUpsertOne) ClearDeletedTime() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDeletedTime()
+	})
+}
+
+// SetDeletedReason sets the "deleted_reason" field.
+func (u *ProcInstUpsertOne) SetDeletedReason(v string) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDeletedReason(v)
+	})
+}
+
+// UpdateDeletedReason sets the "deleted_reason" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateDeletedReason() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDeletedReason()
+	})
+}
+
+// ClearDeletedReason clears the value of the "deleted_reason" field.
+func (u *ProcInstUpsertOne) ClearDeletedReason() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDeletedReason()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcInstUpsertOne) SetStatus(v procinst.Status) *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcInstUpsertOne) UpdateStatus() *ProcInstUpsertOne {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *ProcInstUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ProcInstCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ProcInstUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *ProcInstUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *ProcInstUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // ProcInstCreateBulk is the builder for creating many ProcInst entities in bulk.
 type ProcInstCreateBulk struct {
 	config
 	builders []*ProcInstCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the ProcInst entities in the database.
@@ -498,12 +1148,13 @@ func (picb *ProcInstCreateBulk) Save(ctx context.Context) ([]*ProcInst, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, picb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = picb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, picb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -554,6 +1205,402 @@ func (picb *ProcInstCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (picb *ProcInstCreateBulk) ExecX(ctx context.Context) {
 	if err := picb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.ProcInst.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ProcInstUpsert) {
+//			SetCreatedBy(v+v).
+//		}).
+//		Exec(ctx)
+func (picb *ProcInstCreateBulk) OnConflict(opts ...sql.ConflictOption) *ProcInstUpsertBulk {
+	picb.conflict = opts
+	return &ProcInstUpsertBulk{
+		create: picb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (picb *ProcInstCreateBulk) OnConflictColumns(columns ...string) *ProcInstUpsertBulk {
+	picb.conflict = append(picb.conflict, sql.ConflictColumns(columns...))
+	return &ProcInstUpsertBulk{
+		create: picb,
+	}
+}
+
+// ProcInstUpsertBulk is the builder for "upsert"-ing
+// a bulk of ProcInst nodes.
+type ProcInstUpsertBulk struct {
+	create *ProcInstCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(procinst.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *ProcInstUpsertBulk) UpdateNewValues() *ProcInstUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(procinst.FieldID)
+			}
+			if _, exists := b.mutation.CreatedBy(); exists {
+				s.SetIgnore(procinst.FieldCreatedBy)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(procinst.FieldCreatedAt)
+			}
+			if _, exists := b.mutation.TenantID(); exists {
+				s.SetIgnore(procinst.FieldTenantID)
+			}
+			if _, exists := b.mutation.AppID(); exists {
+				s.SetIgnore(procinst.FieldAppID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.ProcInst.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *ProcInstUpsertBulk) Ignore() *ProcInstUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ProcInstUpsertBulk) DoNothing() *ProcInstUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ProcInstCreateBulk.OnConflict
+// documentation for more info.
+func (u *ProcInstUpsertBulk) Update(set func(*ProcInstUpsert)) *ProcInstUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ProcInstUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (u *ProcInstUpsertBulk) SetUpdatedBy(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetUpdatedBy(v)
+	})
+}
+
+// AddUpdatedBy adds v to the "updated_by" field.
+func (u *ProcInstUpsertBulk) AddUpdatedBy(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddUpdatedBy(v)
+	})
+}
+
+// UpdateUpdatedBy sets the "updated_by" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateUpdatedBy() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateUpdatedBy()
+	})
+}
+
+// ClearUpdatedBy clears the value of the "updated_by" field.
+func (u *ProcInstUpsertBulk) ClearUpdatedBy() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearUpdatedBy()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *ProcInstUpsertBulk) SetUpdatedAt(v time.Time) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateUpdatedAt() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (u *ProcInstUpsertBulk) ClearUpdatedAt() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearUpdatedAt()
+	})
+}
+
+// SetProcDefID sets the "proc_def_id" field.
+func (u *ProcInstUpsertBulk) SetProcDefID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetProcDefID(v)
+	})
+}
+
+// UpdateProcDefID sets the "proc_def_id" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateProcDefID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateProcDefID()
+	})
+}
+
+// SetBusinessKey sets the "business_key" field.
+func (u *ProcInstUpsertBulk) SetBusinessKey(v string) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetBusinessKey(v)
+	})
+}
+
+// UpdateBusinessKey sets the "business_key" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateBusinessKey() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateBusinessKey()
+	})
+}
+
+// SetStartTime sets the "start_time" field.
+func (u *ProcInstUpsertBulk) SetStartTime(v time.Time) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStartTime(v)
+	})
+}
+
+// UpdateStartTime sets the "start_time" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateStartTime() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStartTime()
+	})
+}
+
+// SetEndTime sets the "end_time" field.
+func (u *ProcInstUpsertBulk) SetEndTime(v time.Time) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetEndTime(v)
+	})
+}
+
+// UpdateEndTime sets the "end_time" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateEndTime() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateEndTime()
+	})
+}
+
+// ClearEndTime clears the value of the "end_time" field.
+func (u *ProcInstUpsertBulk) ClearEndTime() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearEndTime()
+	})
+}
+
+// SetDuration sets the "duration" field.
+func (u *ProcInstUpsertBulk) SetDuration(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDuration(v)
+	})
+}
+
+// AddDuration adds v to the "duration" field.
+func (u *ProcInstUpsertBulk) AddDuration(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddDuration(v)
+	})
+}
+
+// UpdateDuration sets the "duration" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateDuration() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDuration()
+	})
+}
+
+// ClearDuration clears the value of the "duration" field.
+func (u *ProcInstUpsertBulk) ClearDuration() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDuration()
+	})
+}
+
+// SetStartUserID sets the "start_user_id" field.
+func (u *ProcInstUpsertBulk) SetStartUserID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStartUserID(v)
+	})
+}
+
+// AddStartUserID adds v to the "start_user_id" field.
+func (u *ProcInstUpsertBulk) AddStartUserID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddStartUserID(v)
+	})
+}
+
+// UpdateStartUserID sets the "start_user_id" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateStartUserID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStartUserID()
+	})
+}
+
+// SetSupperInstanceID sets the "supper_instance_id" field.
+func (u *ProcInstUpsertBulk) SetSupperInstanceID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetSupperInstanceID(v)
+	})
+}
+
+// AddSupperInstanceID adds v to the "supper_instance_id" field.
+func (u *ProcInstUpsertBulk) AddSupperInstanceID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddSupperInstanceID(v)
+	})
+}
+
+// UpdateSupperInstanceID sets the "supper_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateSupperInstanceID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateSupperInstanceID()
+	})
+}
+
+// ClearSupperInstanceID clears the value of the "supper_instance_id" field.
+func (u *ProcInstUpsertBulk) ClearSupperInstanceID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearSupperInstanceID()
+	})
+}
+
+// SetRootInstanceID sets the "root_instance_id" field.
+func (u *ProcInstUpsertBulk) SetRootInstanceID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetRootInstanceID(v)
+	})
+}
+
+// AddRootInstanceID adds v to the "root_instance_id" field.
+func (u *ProcInstUpsertBulk) AddRootInstanceID(v int) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.AddRootInstanceID(v)
+	})
+}
+
+// UpdateRootInstanceID sets the "root_instance_id" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateRootInstanceID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateRootInstanceID()
+	})
+}
+
+// ClearRootInstanceID clears the value of the "root_instance_id" field.
+func (u *ProcInstUpsertBulk) ClearRootInstanceID() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearRootInstanceID()
+	})
+}
+
+// SetDeletedTime sets the "deleted_time" field.
+func (u *ProcInstUpsertBulk) SetDeletedTime(v time.Time) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDeletedTime(v)
+	})
+}
+
+// UpdateDeletedTime sets the "deleted_time" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateDeletedTime() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDeletedTime()
+	})
+}
+
+// ClearDeletedTime clears the value of the "deleted_time" field.
+func (u *ProcInstUpsertBulk) ClearDeletedTime() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDeletedTime()
+	})
+}
+
+// SetDeletedReason sets the "deleted_reason" field.
+func (u *ProcInstUpsertBulk) SetDeletedReason(v string) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetDeletedReason(v)
+	})
+}
+
+// UpdateDeletedReason sets the "deleted_reason" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateDeletedReason() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateDeletedReason()
+	})
+}
+
+// ClearDeletedReason clears the value of the "deleted_reason" field.
+func (u *ProcInstUpsertBulk) ClearDeletedReason() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.ClearDeletedReason()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ProcInstUpsertBulk) SetStatus(v procinst.Status) *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ProcInstUpsertBulk) UpdateStatus() *ProcInstUpsertBulk {
+	return u.Update(func(s *ProcInstUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *ProcInstUpsertBulk) Exec(ctx context.Context) error {
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the ProcInstCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ProcInstCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ProcInstUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

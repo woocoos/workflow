@@ -15,13 +15,15 @@ import (
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/predicate"
 	"github.com/woocoos/workflow/ent/procdef"
+
+	"github.com/woocoos/workflow/ent/internal"
 )
 
 // DeploymentQuery is the builder for querying Deployment entities.
 type DeploymentQuery struct {
 	config
 	ctx                   *QueryContext
-	order                 []OrderFunc
+	order                 []deployment.OrderOption
 	inters                []Interceptor
 	predicates            []predicate.Deployment
 	withProcDefs          *ProcDefQuery
@@ -61,7 +63,7 @@ func (dq *DeploymentQuery) Unique(unique bool) *DeploymentQuery {
 }
 
 // Order specifies how the records should be ordered.
-func (dq *DeploymentQuery) Order(o ...OrderFunc) *DeploymentQuery {
+func (dq *DeploymentQuery) Order(o ...deployment.OrderOption) *DeploymentQuery {
 	dq.order = append(dq.order, o...)
 	return dq
 }
@@ -82,6 +84,9 @@ func (dq *DeploymentQuery) QueryProcDefs() *ProcDefQuery {
 			sqlgraph.To(procdef.Table, procdef.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, deployment.ProcDefsTable, deployment.ProcDefsColumn),
 		)
+		schemaConfig := dq.schemaConfig
+		step.To.Schema = schemaConfig.ProcDef
+		step.Edge.Schema = schemaConfig.ProcDef
 		fromU = sqlgraph.SetNeighbors(dq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -104,6 +109,9 @@ func (dq *DeploymentQuery) QueryDecisionReqs() *DecisionReqDefQuery {
 			sqlgraph.To(decisionreqdef.Table, decisionreqdef.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, deployment.DecisionReqsTable, deployment.DecisionReqsColumn),
 		)
+		schemaConfig := dq.schemaConfig
+		step.To.Schema = schemaConfig.DecisionReqDef
+		step.Edge.Schema = schemaConfig.DecisionReqDef
 		fromU = sqlgraph.SetNeighbors(dq.driver.Dialect(), step)
 		return fromU, nil
 	}
@@ -299,7 +307,7 @@ func (dq *DeploymentQuery) Clone() *DeploymentQuery {
 	return &DeploymentQuery{
 		config:           dq.config,
 		ctx:              dq.ctx.Clone(),
-		order:            append([]OrderFunc{}, dq.order...),
+		order:            append([]deployment.OrderOption{}, dq.order...),
 		inters:           append([]Interceptor{}, dq.inters...),
 		predicates:       append([]predicate.Deployment{}, dq.predicates...),
 		withProcDefs:     dq.withProcDefs.Clone(),
@@ -424,6 +432,8 @@ func (dq *DeploymentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*D
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	_spec.Node.Schema = dq.schemaConfig.Deployment
+	ctx = internal.NewSchemaConfigContext(ctx, dq.schemaConfig)
 	if len(dq.modifiers) > 0 {
 		_spec.Modifiers = dq.modifiers
 	}
@@ -482,8 +492,11 @@ func (dq *DeploymentQuery) loadProcDefs(ctx context.Context, query *ProcDefQuery
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(procdef.FieldDeploymentID)
+	}
 	query.Where(predicate.ProcDef(func(s *sql.Selector) {
-		s.Where(sql.InValues(deployment.ProcDefsColumn, fks...))
+		s.Where(sql.InValues(s.C(deployment.ProcDefsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -493,7 +506,7 @@ func (dq *DeploymentQuery) loadProcDefs(ctx context.Context, query *ProcDefQuery
 		fk := n.DeploymentID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "deployment_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "deployment_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -509,8 +522,11 @@ func (dq *DeploymentQuery) loadDecisionReqs(ctx context.Context, query *Decision
 			init(nodes[i])
 		}
 	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(decisionreqdef.FieldDeploymentID)
+	}
 	query.Where(predicate.DecisionReqDef(func(s *sql.Selector) {
-		s.Where(sql.InValues(deployment.DecisionReqsColumn, fks...))
+		s.Where(sql.InValues(s.C(deployment.DecisionReqsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -520,7 +536,7 @@ func (dq *DeploymentQuery) loadDecisionReqs(ctx context.Context, query *Decision
 		fk := n.DeploymentID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "deployment_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "deployment_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -529,6 +545,8 @@ func (dq *DeploymentQuery) loadDecisionReqs(ctx context.Context, query *Decision
 
 func (dq *DeploymentQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := dq.querySpec()
+	_spec.Node.Schema = dq.schemaConfig.Deployment
+	ctx = internal.NewSchemaConfigContext(ctx, dq.schemaConfig)
 	if len(dq.modifiers) > 0 {
 		_spec.Modifiers = dq.modifiers
 	}
@@ -594,6 +612,9 @@ func (dq *DeploymentQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if dq.ctx.Unique != nil && *dq.ctx.Unique {
 		selector.Distinct()
 	}
+	t1.Schema(dq.schemaConfig.Deployment)
+	ctx = internal.NewSchemaConfigContext(ctx, dq.schemaConfig)
+	selector.WithContext(ctx)
 	for _, p := range dq.predicates {
 		p(selector)
 	}

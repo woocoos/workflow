@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/woocoos/entco/schemax/typex"
 	"github.com/woocoos/workflow/ent/deployment"
 	"github.com/woocoos/workflow/ent/procdef"
 )
@@ -25,17 +27,17 @@ type ProcDef struct {
 	UpdatedBy int `json:"updated_by,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 部署ID
 	DeploymentID int `json:"deployment_id,omitempty"`
-	// 所属根组织ID
-	OrgID int `json:"org_id,omitempty"`
 	// 所属应用ID
 	AppID int `json:"app_id,omitempty"`
 	// 分类
 	Category string `json:"category,omitempty"`
 	// 名称
 	Name string `json:"name,omitempty"`
-	// KEY
+	// process id
 	Key string `json:"key,omitempty"`
 	// 版本
 	Version int32 `json:"version,omitempty"`
@@ -43,17 +45,16 @@ type ProcDef struct {
 	Revision int32 `json:"revision,omitempty"`
 	// 版本标签
 	VersionTag string `json:"version_tag,omitempty"`
-	// 资源名称
-	ResourceName string `json:"resource_name,omitempty"`
-	// 流程图资源名称
-	DgrmResourceName string `json:"dgrm_resource_name,omitempty"`
+	// 流程文件key
+	ResourceKey string `json:"resource_key,omitempty"`
+	// 流程文件id
+	ResourceID int `json:"resource_id,omitempty"`
 	// 状态
-	Status procdef.Status `json:"status,omitempty"`
-	// 资源数据
-	ResourceData []byte `json:"resource_data,omitempty"`
+	Status typex.SimpleStatus `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProcDefQuery when eager-loading is set.
-	Edges ProcDefEdges `json:"edges"`
+	Edges        ProcDefEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // ProcDefEdges holds the relations/edges for other nodes in the graph.
@@ -98,16 +99,14 @@ func (*ProcDef) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case procdef.FieldResourceData:
-			values[i] = new([]byte)
-		case procdef.FieldID, procdef.FieldCreatedBy, procdef.FieldUpdatedBy, procdef.FieldDeploymentID, procdef.FieldOrgID, procdef.FieldAppID, procdef.FieldVersion, procdef.FieldRevision:
+		case procdef.FieldID, procdef.FieldCreatedBy, procdef.FieldUpdatedBy, procdef.FieldTenantID, procdef.FieldDeploymentID, procdef.FieldAppID, procdef.FieldVersion, procdef.FieldRevision, procdef.FieldResourceID:
 			values[i] = new(sql.NullInt64)
-		case procdef.FieldCategory, procdef.FieldName, procdef.FieldKey, procdef.FieldVersionTag, procdef.FieldResourceName, procdef.FieldDgrmResourceName, procdef.FieldStatus:
+		case procdef.FieldCategory, procdef.FieldName, procdef.FieldKey, procdef.FieldVersionTag, procdef.FieldResourceKey, procdef.FieldStatus:
 			values[i] = new(sql.NullString)
 		case procdef.FieldCreatedAt, procdef.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type ProcDef", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -151,17 +150,17 @@ func (pd *ProcDef) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				pd.UpdatedAt = value.Time
 			}
+		case procdef.FieldTenantID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value.Valid {
+				pd.TenantID = int(value.Int64)
+			}
 		case procdef.FieldDeploymentID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field deployment_id", values[i])
 			} else if value.Valid {
 				pd.DeploymentID = int(value.Int64)
-			}
-		case procdef.FieldOrgID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
-			} else if value.Valid {
-				pd.OrgID = int(value.Int64)
 			}
 		case procdef.FieldAppID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -205,33 +204,35 @@ func (pd *ProcDef) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				pd.VersionTag = value.String
 			}
-		case procdef.FieldResourceName:
+		case procdef.FieldResourceKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field resource_name", values[i])
+				return fmt.Errorf("unexpected type %T for field resource_key", values[i])
 			} else if value.Valid {
-				pd.ResourceName = value.String
+				pd.ResourceKey = value.String
 			}
-		case procdef.FieldDgrmResourceName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field dgrm_resource_name", values[i])
+		case procdef.FieldResourceID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field resource_id", values[i])
 			} else if value.Valid {
-				pd.DgrmResourceName = value.String
+				pd.ResourceID = int(value.Int64)
 			}
 		case procdef.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				pd.Status = procdef.Status(value.String)
+				pd.Status = typex.SimpleStatus(value.String)
 			}
-		case procdef.FieldResourceData:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field resource_data", values[i])
-			} else if value != nil {
-				pd.ResourceData = *value
-			}
+		default:
+			pd.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the ProcDef.
+// This includes values selected through modifiers, order, etc.
+func (pd *ProcDef) Value(name string) (ent.Value, error) {
+	return pd.selectValues.Get(name)
 }
 
 // QueryDeployment queries the "deployment" edge of the ProcDef entity.
@@ -279,11 +280,11 @@ func (pd *ProcDef) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(pd.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", pd.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("deployment_id=")
 	builder.WriteString(fmt.Sprintf("%v", pd.DeploymentID))
-	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", pd.OrgID))
 	builder.WriteString(", ")
 	builder.WriteString("app_id=")
 	builder.WriteString(fmt.Sprintf("%v", pd.AppID))
@@ -306,17 +307,14 @@ func (pd *ProcDef) String() string {
 	builder.WriteString("version_tag=")
 	builder.WriteString(pd.VersionTag)
 	builder.WriteString(", ")
-	builder.WriteString("resource_name=")
-	builder.WriteString(pd.ResourceName)
+	builder.WriteString("resource_key=")
+	builder.WriteString(pd.ResourceKey)
 	builder.WriteString(", ")
-	builder.WriteString("dgrm_resource_name=")
-	builder.WriteString(pd.DgrmResourceName)
+	builder.WriteString("resource_id=")
+	builder.WriteString(fmt.Sprintf("%v", pd.ResourceID))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", pd.Status))
-	builder.WriteString(", ")
-	builder.WriteString("resource_data=")
-	builder.WriteString(fmt.Sprintf("%v", pd.ResourceData))
 	builder.WriteByte(')')
 	return builder.String()
 }

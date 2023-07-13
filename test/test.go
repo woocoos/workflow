@@ -19,3 +19,11 @@ func init() {
 func BaseDir() string {
 	return basedir
 }
+
+func Path(rel string) string {
+	if filepath.IsAbs(rel) {
+		return rel
+	}
+
+	return filepath.Join(basedir, rel)
+}

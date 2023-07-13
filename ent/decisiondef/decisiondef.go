@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -21,10 +23,10 @@ const (
 	FieldUpdatedBy = "updated_by"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldTenantID holds the string denoting the tenant_id field in the database.
+	FieldTenantID = "tenant_id"
 	// FieldDeploymentID holds the string denoting the deployment_id field in the database.
 	FieldDeploymentID = "deployment_id"
-	// FieldOrgID holds the string denoting the org_id field in the database.
-	FieldOrgID = "org_id"
 	// FieldAppID holds the string denoting the app_id field in the database.
 	FieldAppID = "app_id"
 	// FieldReqDefID holds the string denoting the req_def_id field in the database.
@@ -43,10 +45,6 @@ const (
 	FieldRevision = "revision"
 	// FieldVersionTag holds the string denoting the version_tag field in the database.
 	FieldVersionTag = "version_tag"
-	// FieldResourceName holds the string denoting the resource_name field in the database.
-	FieldResourceName = "resource_name"
-	// FieldDgrmResourceName holds the string denoting the dgrm_resource_name field in the database.
-	FieldDgrmResourceName = "dgrm_resource_name"
 	// EdgeReqDef holds the string denoting the req_def edge name in mutations.
 	EdgeReqDef = "req_def"
 	// Table holds the table name of the decisiondef in the database.
@@ -67,8 +65,8 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedBy,
 	FieldUpdatedAt,
+	FieldTenantID,
 	FieldDeploymentID,
-	FieldOrgID,
 	FieldAppID,
 	FieldReqDefID,
 	FieldCategory,
@@ -78,8 +76,6 @@ var Columns = []string{
 	FieldVersion,
 	FieldRevision,
 	FieldVersionTag,
-	FieldResourceName,
-	FieldDgrmResourceName,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -98,9 +94,107 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/woocoos/workflow/ent/runtime"
 var (
-	Hooks [1]ent.Hook
+	Hooks        [2]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() int
 )
+
+// OrderOption defines the ordering options for the DecisionDef queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedBy orders the results by the updated_by field.
+func ByUpdatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedBy, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByTenantID orders the results by the tenant_id field.
+func ByTenantID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTenantID, opts...).ToFunc()
+}
+
+// ByDeploymentID orders the results by the deployment_id field.
+func ByDeploymentID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeploymentID, opts...).ToFunc()
+}
+
+// ByAppID orders the results by the app_id field.
+func ByAppID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAppID, opts...).ToFunc()
+}
+
+// ByReqDefID orders the results by the req_def_id field.
+func ByReqDefID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReqDefID, opts...).ToFunc()
+}
+
+// ByCategory orders the results by the category field.
+func ByCategory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCategory, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByKey orders the results by the key field.
+func ByKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKey, opts...).ToFunc()
+}
+
+// ByReqDefKey orders the results by the req_def_key field.
+func ByReqDefKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReqDefKey, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+}
+
+// ByRevision orders the results by the revision field.
+func ByRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRevision, opts...).ToFunc()
+}
+
+// ByVersionTag orders the results by the version_tag field.
+func ByVersionTag(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersionTag, opts...).ToFunc()
+}
+
+// ByReqDefField orders the results by req_def field.
+func ByReqDefField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReqDefStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newReqDefStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReqDefInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ReqDefTable, ReqDefColumn),
+	)
+}

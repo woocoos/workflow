@@ -23,11 +23,14 @@ migration-lint:
 migration-apply:
 	atlas migrate apply --dev-url="$(DSN)" --dir="file://ent/migrate/migrations" --latest=$(LATEST)
 test-db:
-	GOWORK=off go run -mod=mod test/initdb.go
+	go run script/initdb.go
 
 .PHONY: gen genent gengql
 gen: genent gengql
 genent:
-	go run graph/entgen/entc.go
+	go run codegen/entgen/entc.go
 gengql:
-	go run graph/gqlgen/gqlgen.go
+	go run codegen/gqlgen/gqlgen.go
+
+start-dev-server:
+	temporal server start-dev

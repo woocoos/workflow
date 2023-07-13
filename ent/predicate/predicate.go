@@ -18,6 +18,18 @@ type Deployment func(*sql.Selector)
 // IdentityLink is the predicate function for identitylink builders.
 type IdentityLink func(*sql.Selector)
 
+// OrgApp is the predicate function for orgapp builders.
+type OrgApp func(*sql.Selector)
+
+// OrgRole is the predicate function for orgrole builders.
+type OrgRole func(*sql.Selector)
+
+// OrgRoleUser is the predicate function for orgroleuser builders.
+type OrgRoleUser func(*sql.Selector)
+
+// OrgUser is the predicate function for orguser builders.
+type OrgUser func(*sql.Selector)
+
 // ProcDef is the predicate function for procdef builders.
 type ProcDef func(*sql.Selector)
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
@@ -25,10 +26,10 @@ type ProcInst struct {
 	UpdatedBy int `json:"updated_by,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// TenantID holds the value of the "tenant_id" field.
+	TenantID int `json:"tenant_id,omitempty"`
 	// 流程定义ID
 	ProcDefID int `json:"proc_def_id,omitempty"`
-	// 所属根组织ID
-	OrgID int `json:"org_id,omitempty"`
 	// 所属应用ID
 	AppID int `json:"app_id,omitempty"`
 	// 业务主键
@@ -53,7 +54,8 @@ type ProcInst struct {
 	Status procinst.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProcInstQuery when eager-loading is set.
-	Edges ProcInstEdges `json:"edges"`
+	Edges        ProcInstEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // ProcInstEdges holds the relations/edges for other nodes in the graph.
@@ -98,14 +100,14 @@ func (*ProcInst) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case procinst.FieldID, procinst.FieldCreatedBy, procinst.FieldUpdatedBy, procinst.FieldProcDefID, procinst.FieldOrgID, procinst.FieldAppID, procinst.FieldDuration, procinst.FieldStartUserID, procinst.FieldSupperInstanceID, procinst.FieldRootInstanceID:
+		case procinst.FieldID, procinst.FieldCreatedBy, procinst.FieldUpdatedBy, procinst.FieldTenantID, procinst.FieldProcDefID, procinst.FieldAppID, procinst.FieldDuration, procinst.FieldStartUserID, procinst.FieldSupperInstanceID, procinst.FieldRootInstanceID:
 			values[i] = new(sql.NullInt64)
 		case procinst.FieldBusinessKey, procinst.FieldDeletedReason, procinst.FieldStatus:
 			values[i] = new(sql.NullString)
 		case procinst.FieldCreatedAt, procinst.FieldUpdatedAt, procinst.FieldStartTime, procinst.FieldEndTime, procinst.FieldDeletedTime:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type ProcInst", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -149,17 +151,17 @@ func (pi *ProcInst) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				pi.UpdatedAt = value.Time
 			}
+		case procinst.FieldTenantID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tenant_id", values[i])
+			} else if value.Valid {
+				pi.TenantID = int(value.Int64)
+			}
 		case procinst.FieldProcDefID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field proc_def_id", values[i])
 			} else if value.Valid {
 				pi.ProcDefID = int(value.Int64)
-			}
-		case procinst.FieldOrgID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field org_id", values[i])
-			} else if value.Valid {
-				pi.OrgID = int(value.Int64)
 			}
 		case procinst.FieldAppID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -227,9 +229,17 @@ func (pi *ProcInst) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				pi.Status = procinst.Status(value.String)
 			}
+		default:
+			pi.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the ProcInst.
+// This includes values selected through modifiers, order, etc.
+func (pi *ProcInst) Value(name string) (ent.Value, error) {
+	return pi.selectValues.Get(name)
 }
 
 // QueryProcDef queries the "proc_def" edge of the ProcInst entity.
@@ -277,11 +287,11 @@ func (pi *ProcInst) String() string {
 	builder.WriteString("updated_at=")
 	builder.WriteString(pi.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
+	builder.WriteString("tenant_id=")
+	builder.WriteString(fmt.Sprintf("%v", pi.TenantID))
+	builder.WriteString(", ")
 	builder.WriteString("proc_def_id=")
 	builder.WriteString(fmt.Sprintf("%v", pi.ProcDefID))
-	builder.WriteString(", ")
-	builder.WriteString("org_id=")
-	builder.WriteString(fmt.Sprintf("%v", pi.OrgID))
 	builder.WriteString(", ")
 	builder.WriteString("app_id=")
 	builder.WriteString(fmt.Sprintf("%v", pi.AppID))

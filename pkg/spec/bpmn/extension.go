@@ -79,6 +79,9 @@ func (a AssignmentDefinition) CountAssignees() (count int) {
 }
 
 func (a AssignmentDefinition) GetAssignee(vars Mappings) (string, error) {
+	if !IsFormal(a.Assignee) {
+		return a.Assignee, nil
+	}
 	v, err := Convert.Eval(a.Assignee, vars)
 	if err != nil {
 		return "", fmt.Errorf("failed to evaluate assignee: %w", err)
@@ -92,6 +95,9 @@ func (a AssignmentDefinition) GetAssignee(vars Mappings) (string, error) {
 }
 
 func (a AssignmentDefinition) GetCandidateGroups(vars Mappings) ([]string, error) {
+	if !IsFormal(a.CandidateGroups) {
+		return strings.Split(a.CandidateGroups, ","), nil
+	}
 	v, err := Convert.Eval(a.CandidateGroups, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate candidate groups: %w", err)
@@ -100,6 +106,9 @@ func (a AssignmentDefinition) GetCandidateGroups(vars Mappings) ([]string, error
 }
 
 func (a AssignmentDefinition) GetCandidateUsers(vars Mappings) ([]string, error) {
+	if !IsFormal(a.CandidateUsers) {
+		return strings.Split(a.CandidateUsers, ","), nil
+	}
 	v, err := Convert.Eval(a.CandidateUsers, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate candidate users: %w", err)
