@@ -24,3 +24,6 @@
 # Go workspace file
 go.work*
 
+# misc
+
+/cmd/**/tmp/
