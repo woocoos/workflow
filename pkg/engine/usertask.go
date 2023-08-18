@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/woocoos/workflow/ent"
 	"github.com/woocoos/workflow/ent/identitylink"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"go.temporal.io/sdk/workflow"
 )
@@ -18,7 +19,7 @@ const (
 // task.MemberCount = instances count, task.UnfinishedCount = unfinished instances count, task.AgreeCount = agree count
 type UserTaskListen struct {
 	task     *ent.Task
-	exporter Exporter
+	exporter api.Exporter
 }
 
 func (ul *UserTaskListen) Listen(ctx workflow.Context) {

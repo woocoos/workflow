@@ -3,6 +3,7 @@ package bpmn
 import (
 	"errors"
 	"fmt"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -50,8 +51,8 @@ var (
 	ErrExpressionResultNotBool   = errors.New("condition expression result is not bool")
 )
 
-func EvaluateExpressionToString(exp string, vars Mappings) (string, error) {
-	val, err := Convert.Eval(exp, vars)
+func EvaluateExpressionToString(exp string, input vars.Mapping) (string, error) {
+	val, err := Convert.Eval(exp, input)
 	if err != nil {
 		return "", err
 	}

@@ -2,8 +2,10 @@ package engine
 
 import (
 	"fmt"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"github.com/woocoos/workflow/pkg/spec/dmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"reflect"
 	"strconv"
 )
@@ -19,7 +21,7 @@ func NewDMN(id string) *DMN {
 }
 
 // StartInstance start a dmn instance,return a single feel value
-func (d *DMN) StartInstance(loader *DMNLoader, task *bpmn.BusinessRuleTask, pi *InstanceRequest) (bpmn.Mappings, error) {
+func (d *DMN) StartInstance(loader *DMNLoader, task *bpmn.BusinessRuleTask, pi *api.InstanceRequest) (vars.Mapping, error) {
 	dcn := loader.FindDecision(task.CalledDecision.DecisionId)
 	if dcn == nil {
 		return nil, fmt.Errorf("[StartInstance]decision %s not found", task.CalledDecision.DecisionId)
@@ -33,19 +35,19 @@ func (d *DMN) StartInstance(loader *DMNLoader, task *bpmn.BusinessRuleTask, pi *
 	if err != nil {
 		return nil, err
 	}
-	return bpmn.Mappings{
+	return vars.Mapping{
 		task.CalledDecision.ResultVariable: v,
 	}, nil
 }
 
 // Result handle the result of decision DRG
 // dt is final decision table
-func (d *DMN) Result(final *dmn.DecisionTable, input []bpmn.Mappings) (output any, err error) {
+func (d *DMN) Result(final *dmn.DecisionTable, input []vars.Mapping) (output any, err error) {
 	switch final.HitPolicy {
 	case dmn.HitPolicyCOLLECT, dmn.HitPolicyRULEORDER:
 		return input, nil
 	}
-	tmp := make(bpmn.Mappings)
+	tmp := make(vars.Mapping)
 	if final.Aggregation != nil {
 		tmp, err = aggregation(final, input)
 		if err != nil {
@@ -60,7 +62,7 @@ func (d *DMN) Result(final *dmn.DecisionTable, input []bpmn.Mappings) (output an
 	return tmp, nil
 }
 
-func (d *DMN) EvaluateDecision(loader *DMNLoader, did string, ctxMap bpmn.Mappings) ([]bpmn.Mappings, error) {
+func (d *DMN) EvaluateDecision(loader *DMNLoader, did string, ctxMap vars.Mapping) ([]vars.Mapping, error) {
 	dcn := loader.FindDecision(did)
 	if dcn == nil {
 		return nil, fmt.Errorf("[EvaluateDecision]decision %s not found", did)
@@ -73,21 +75,21 @@ func (d *DMN) EvaluateDecision(loader *DMNLoader, did string, ctxMap bpmn.Mappin
 			if err != nil {
 				return nil, err
 			}
-			return []bpmn.Mappings{
+			return []vars.Mapping{
 				{dcn.Variable.Name: v},
 			}, nil
 		}
 		return nil, nil
 	}
 
-	vars := []bpmn.Mappings{ctxMap}
+	lm := []vars.Mapping{ctxMap}
 	for _, rd := range dcn.InformationRequirement {
 		did := rd.RequiredDecision.Href[1:]
 		result, err := d.EvaluateDecision(loader, did, ctxMap)
 		if err != nil {
 			return nil, err
 		}
-		vars, err = cross(vars, result)
+		lm, err = cross(lm, result)
 		if err != nil {
 			return nil, err
 		}
@@ -95,8 +97,8 @@ func (d *DMN) EvaluateDecision(loader *DMNLoader, did string, ctxMap bpmn.Mappin
 	if dcn.DecisionTable == nil {
 		return nil, fmt.Errorf("[EvaluateDecision]decision %s not found", did)
 	}
-	var output []bpmn.Mappings
-	for _, mappings := range vars {
+	var output []vars.Mapping
+	for _, mappings := range lm {
 		data, err := d.EvaluateTable(did, dcn.DecisionTable, mappings)
 		if err != nil {
 			return nil, err
@@ -109,7 +111,7 @@ func (d *DMN) EvaluateDecision(loader *DMNLoader, did string, ctxMap bpmn.Mappin
 // EvaluateTable evaluate decision table
 //
 // IF THE COLLECT HIT POLICY IS USED WITH AN AGGREGATOR, THE DECISION TABLE CAN ONLY HAVE ONE OUTPUT.
-func (d *DMN) EvaluateTable(did string, dt *dmn.DecisionTable, input bpmn.Mappings) (output []bpmn.Mappings, err error) {
+func (d *DMN) EvaluateTable(did string, dt *dmn.DecisionTable, input vars.Mapping) (output []vars.Mapping, err error) {
 	rules, err := bpmn.Convert.ConvertDecisionTable(did, dt)
 	if err != nil {
 		return nil, err
@@ -122,7 +124,7 @@ func (d *DMN) EvaluateTable(did string, dt *dmn.DecisionTable, input bpmn.Mappin
 		if !match {
 			continue
 		}
-		rp := bpmn.Mappings{}
+		rp := vars.Mapping{}
 		for j, column := range dt.Rules[i].OutputEntries {
 			// literal expression
 			p, err := bpmn.Convert.Eval(column.Text, nil)
@@ -154,10 +156,10 @@ func (d *DMN) EvaluateTable(did string, dt *dmn.DecisionTable, input bpmn.Mappin
 	if err != nil {
 		return nil, err
 	}
-	return []bpmn.Mappings{gr}, nil
+	return []vars.Mapping{gr}, nil
 }
 
-func aggregation(dt *dmn.DecisionTable, output []bpmn.Mappings) (bpmn.Mappings, error) {
+func aggregation(dt *dmn.DecisionTable, output []vars.Mapping) (vars.Mapping, error) {
 	switch *dt.Aggregation {
 	case dmn.BuiltinAggregatorSUM:
 		return sum(output)
@@ -171,11 +173,11 @@ func aggregation(dt *dmn.DecisionTable, output []bpmn.Mappings) (bpmn.Mappings, 
 	return nil, fmt.Errorf("hit policy not support error:%s,%s", dt.Id, *dt.Aggregation)
 }
 
-func cross(left, right []bpmn.Mappings) ([]bpmn.Mappings, error) {
-	output := make([]bpmn.Mappings, 0, len(left)*len(right))
+func cross(left, right []vars.Mapping) ([]vars.Mapping, error) {
+	output := make([]vars.Mapping, 0, len(left)*len(right))
 	for _, l := range left {
 		for j, r := range right {
-			ll := make(bpmn.Mappings)
+			ll := make(vars.Mapping)
 			for k := range l {
 				ll[k] = l[k]
 			}
@@ -189,20 +191,20 @@ func cross(left, right []bpmn.Mappings) ([]bpmn.Mappings, error) {
 }
 
 // cross product
-func crossMap(left, right bpmn.Mappings) ([]bpmn.Mappings, error) {
-	ls := make([]bpmn.Mappings, 0)
+func crossMap(left, right vars.Mapping) ([]vars.Mapping, error) {
+	ls := make([]vars.Mapping, 0)
 	for _, v := range left {
-		if _, ok := v.(bpmn.Mappings); ok {
-			ls = append(ls, v.(bpmn.Mappings))
+		if _, ok := v.(vars.Mapping); ok {
+			ls = append(ls, v.(vars.Mapping))
 		} else {
 			ls = append(ls, left)
 			break
 		}
 	}
-	rs := make([]bpmn.Mappings, 0)
+	rs := make([]vars.Mapping, 0)
 	for _, v := range right {
-		if _, ok := v.(bpmn.Mappings); ok {
-			rs = append(rs, v.(bpmn.Mappings))
+		if _, ok := v.(vars.Mapping); ok {
+			rs = append(rs, v.(vars.Mapping))
 		} else {
 			rs = append(rs, right)
 			break
@@ -212,8 +214,8 @@ func crossMap(left, right bpmn.Mappings) ([]bpmn.Mappings, error) {
 }
 
 // sum aggregation for Mappings
-func sum(input []bpmn.Mappings) (bpmn.Mappings, error) {
-	output := make(bpmn.Mappings)
+func sum(input []vars.Mapping) (vars.Mapping, error) {
+	output := make(vars.Mapping)
 	for _, v := range input {
 		for k, p := range v {
 			if _, ok := output[k]; !ok {
@@ -231,8 +233,8 @@ func sum(input []bpmn.Mappings) (bpmn.Mappings, error) {
 }
 
 // max aggregation for Mappings
-func max(input []bpmn.Mappings) (bpmn.Mappings, error) {
-	output := make(bpmn.Mappings)
+func max(input []vars.Mapping) (vars.Mapping, error) {
+	output := make(vars.Mapping)
 	for _, v := range input {
 		for k, p := range v {
 			if _, ok := output[k]; !ok {
@@ -252,8 +254,8 @@ func max(input []bpmn.Mappings) (bpmn.Mappings, error) {
 }
 
 // min aggregation for Mappings
-func min(input []bpmn.Mappings) (bpmn.Mappings, error) {
-	output := make(bpmn.Mappings)
+func min(input []vars.Mapping) (vars.Mapping, error) {
+	output := make(vars.Mapping)
 	for _, v := range input {
 		for k, p := range v {
 			if _, ok := output[k]; !ok {
@@ -273,8 +275,8 @@ func min(input []bpmn.Mappings) (bpmn.Mappings, error) {
 }
 
 // count aggregation for Mappings
-func count(input []bpmn.Mappings) bpmn.Mappings {
-	output := make(bpmn.Mappings)
+func count(input []vars.Mapping) vars.Mapping {
+	output := make(vars.Mapping)
 	for _, v := range input {
 		for k, _ := range v {
 			if _, ok := output[k]; !ok {

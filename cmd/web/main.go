@@ -20,6 +20,7 @@ import (
 	_ "github.com/woocoos/workflow/ent/runtime"
 	"github.com/woocoos/workflow/service/deployment"
 	"github.com/woocoos/workflow/service/workflow"
+	"net/http"
 )
 
 var (
@@ -46,15 +47,19 @@ func main() {
 		WFDB:   dbClient,
 		Engine: wf,
 	}
-	webSrv := buildWebServer(app.AppConfiguration(), ds)
+	webSrv := buildApiServer(cnf, ds)
 	app.RegisterServer(webSrv)
+
+	if cnf.Bool("ui.enabled") {
+		app.RegisterServer(buildUiServer(cnf))
+	}
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func buildWebServer(cnf *conf.AppConfiguration, service *deployment.Service) *web.Server {
+func buildApiServer(cnf *conf.AppConfiguration, service *deployment.Service) *web.Server {
 	webSrv := web.New(web.WithConfiguration(cnf.Sub("web")),
 		web.WithGracefulStop(),
 		web.RegisterMiddleware(gql.New()),
@@ -88,4 +93,12 @@ func buildEntClient(cnf *conf.AppConfiguration) *ent.Client {
 		dbClient = ent.NewClient(ent.Driver(pd), scfg)
 	}
 	return dbClient
+}
+
+func buildUiServer(cnf *conf.AppConfiguration) *web.Server {
+	uiSrv := web.New(web.WithConfiguration(cnf.Sub("ui")),
+		web.WithGracefulStop(),
+	)
+	uiSrv.Router().StaticFS("/", http.Dir("../../web/build"))
+	return uiSrv
 }

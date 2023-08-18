@@ -483,6 +483,22 @@ type Deployment implements Node {
   procDefs: [ProcDef!]
   decisionReqs: [DecisionReqDef!]
 }
+"""A connection to a list of items."""
+type DeploymentConnection {
+  """A list of edges."""
+  edges: [DeploymentEdge]
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+  """Identifies the total count of items in the connection."""
+  totalCount: Int!
+}
+"""An edge in a connection."""
+type DeploymentEdge {
+  """The item at the end of the edge."""
+  node: Deployment
+  """A cursor for use in pagination."""
+  cursor: Cursor!
+}
 """Ordering options for Deployment connections"""
 input DeploymentOrder {
   """The ordering direction."""
@@ -617,7 +633,7 @@ input DeploymentWhereInput {
   hasDecisionReqs: Boolean
   hasDecisionReqsWith: [DecisionReqDefWhereInput!]
 }
-"""An object with an Global ID,for using in Noder interface."""
+"""An object with a Global ID,for using in Noder interface."""
 scalar GID
 type IdentityLink implements Node {
   id: ID!
@@ -1441,7 +1457,25 @@ type Query {
     """The list of node IDs."""
     ids: [GID!]!
   ): [Node]!
-  deployments: [Deployment!]!
+  deployments(
+    """Returns the elements in the list that come after the specified cursor."""
+    after: Cursor
+
+    """Returns the first _n_ elements from the list."""
+    first: Int
+
+    """Returns the elements in the list that come before the specified cursor."""
+    before: Cursor
+
+    """Returns the last _n_ elements from the list."""
+    last: Int
+
+    """Ordering options for Deployments returned from the connection."""
+    orderBy: DeploymentOrder
+
+    """Filtering options for Deployments returned from the connection."""
+    where: DeploymentWhereInput
+  ): DeploymentConnection!
   procInsts(
     """Returns the elements in the list that come after the specified cursor."""
     after: Cursor

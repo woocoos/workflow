@@ -20,19 +20,25 @@ web:
           middlewares:
             - accessLog:
                 exclude:
-                  - ""
                   - IntrospectionQuery
             - recovery:
+            - errorHandle:
             - jwt:
                 signingMethod: "HS256"
                 signingKey: "secret"
                 exclude:
                   - "/" #doc page
             - tenant:
-              type: int
+                exclude:
+                  - "/" #doc page
             - graphql:
                 withAuthorization: false
                 appCode: "wf"
+
+ui:
+  enabled: true
+  server:
+    addr: 127.0.0.1:8082
 
 store:
   portal:
@@ -41,7 +47,6 @@ store:
   workflow:
     driverName: mysql
     dsn: "root:@tcp(localhost:3306)/workflow?parseTime=true&loc=Local"
-snowflake:
 
 temporal:
   taskQueue: approval

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/woocoos/workflow/ent"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -22,7 +24,7 @@ type (
 	BPMN struct {
 		// worker id
 		Id          string
-		Exporter    Exporter
+		Exporter    api.Exporter
 		Handlers    *HandlerFuncMap
 		Activity    *BpmnActivity
 		ResourceDir string
@@ -37,7 +39,7 @@ func WithResourceDir(dir string) Option {
 }
 
 // WithExporter 指定外部相关接口实现.
-func WithExporter(exporter Exporter) Option {
+func WithExporter(exporter api.Exporter) Option {
 	return func(bp *BPMN) {
 		bp.Exporter = exporter
 	}
@@ -70,7 +72,7 @@ func DefaultActivityOption() workflow.ActivityOptions {
 	}
 }
 
-func (bp *BPMN) StartInstance(loader *BpmnLoader, pi *InstanceRequest) (*Iterator, error) {
+func (bp *BPMN) StartInstance(loader *BpmnLoader, pi *api.InstanceRequest) (*Iterator, error) {
 	pd := loader.FindProcess(pi.ProcDefKey)
 	if pd == nil {
 		return nil, fmt.Errorf("[RunInstance]process %s not found", pi.ProcDefKey)
@@ -86,7 +88,7 @@ func (bp *BPMN) StartInstance(loader *BpmnLoader, pi *InstanceRequest) (*Iterato
 	return it, nil
 }
 
-func (bp *BPMN) Start(ctx workflow.Context, pi *InstanceRequest, loader *BpmnLoader) (err error) {
+func (bp *BPMN) Start(ctx workflow.Context, pi *api.InstanceRequest, loader *BpmnLoader) (err error) {
 	iterator, err := bp.StartInstance(loader, pi)
 	if err != nil {
 		return
@@ -129,7 +131,7 @@ func (bp *BPMN) Start(ctx workflow.Context, pi *InstanceRequest, loader *BpmnLoa
 	return err
 }
 
-func (bp *BPMN) handleEventBasedGateway(ctx workflow.Context, it *Iterator, pi *InstanceRequest, subs []bpmn.Elementor) (next bpmn.Elementor, err error) {
+func (bp *BPMN) handleEventBasedGateway(ctx workflow.Context, it *Iterator, pi *api.InstanceRequest, subs []bpmn.Elementor) (next bpmn.Elementor, err error) {
 	//logger := workflow.GetLogger(ctx)
 	evl := EventListen{
 		loader: it.Loader(),
@@ -152,7 +154,7 @@ func (bp *BPMN) handleEventBasedGateway(ctx workflow.Context, it *Iterator, pi *
 	return
 }
 
-func (bp *BPMN) handleIntermediateCatchEvent(ctx workflow.Context, it *Iterator, pi *InstanceRequest, ele *bpmn.IntermediateCatchEvent) (err error) {
+func (bp *BPMN) handleIntermediateCatchEvent(ctx workflow.Context, it *Iterator, pi *api.InstanceRequest, ele *bpmn.IntermediateCatchEvent) (err error) {
 	evl := EventListen{
 		loader: it.Loader(),
 		eles:   []bpmn.Elementor{ele},
@@ -172,14 +174,23 @@ func (bp *BPMN) handleIntermediateCatchEvent(ctx workflow.Context, it *Iterator,
 	return
 }
 
-func (bp *BPMN) handleServiceTask(ctx workflow.Context, pi *InstanceRequest, taskEle *bpmn.ServiceTask) error {
+func (bp *BPMN) handleServiceTask(ctx workflow.Context, pi *api.InstanceRequest, taskEle *bpmn.ServiceTask) error {
+	if taskEle.TaskDefinition == nil {
+		return fmt.Errorf("service task definition not found: %s", taskEle.Id)
+	}
+	typename, err := taskEle.TaskDefinition.GetType()
+	if err != nil {
+		return err
+	}
+
 	ao := DefaultActivityOption()
 	_ = taskEle.ExtensionProperties.Decode(&ao) // ignore error
-	if taskEle.TaskDefinition != nil {
-		v, err := taskEle.TaskDefinition.GetRetries()
-		if err != nil {
-			return err
-		}
+
+	v, err := taskEle.TaskDefinition.GetRetries()
+	if err != nil {
+		return err
+	}
+	if v > 0 {
 		ao.RetryPolicy = &temporal.RetryPolicy{
 			MaximumAttempts: int32(v),
 		}
@@ -187,11 +198,19 @@ func (bp *BPMN) handleServiceTask(ctx workflow.Context, pi *InstanceRequest, tas
 
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	var variables bpmn.Mappings
-	err := workflow.ExecuteActivity(ctx, bp.Activity.ServiceTaskActivity, ServiceTaskActivityRequest{
-		InstanceRequest: pi,
-		Element:         taskEle,
-	}).Get(ctx, &variables)
+	var variables vars.Mapping
+	switch typename {
+	case "http":
+		err = workflow.ExecuteActivity(ctx, bp.Activity.HttpServiceTaskActivity, api.ServiceTaskActivityRequest{
+			InstanceRequest: pi,
+			Element:         taskEle,
+		}).Get(ctx, &variables)
+	default:
+		err = workflow.ExecuteActivity(ctx, bp.Activity.ServiceTaskActivity, api.ServiceTaskActivityRequest{
+			InstanceRequest: pi,
+			Element:         taskEle,
+		}).Get(ctx, &variables)
+	}
 	if err != nil {
 		return err
 	}
@@ -201,7 +220,7 @@ func (bp *BPMN) handleServiceTask(ctx workflow.Context, pi *InstanceRequest, tas
 	return nil
 }
 
-func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *InstanceRequest, taskEle *bpmn.UserTask) error {
+func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *api.InstanceRequest, taskEle *bpmn.UserTask) error {
 	logger := workflow.GetLogger(ctx)
 	if taskEle.Assignment == nil {
 		logger.Warn("user task assignment is nil", "task", taskEle.Id)
@@ -212,7 +231,7 @@ func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *InstanceRequest, taskEl
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	var task ent.Task
-	err := workflow.ExecuteActivity(ctx, bp.Activity.CreateUserTaskActivity, UserTaskActivityRequest{
+	err := workflow.ExecuteActivity(ctx, bp.Activity.CreateUserTaskActivity, api.UserTaskActivityRequest{
 		InstanceRequest: pi,
 		Element:         taskEle,
 	}).Get(ctx, &task)
@@ -240,13 +259,13 @@ func (bp *BPMN) handleUserTask(ctx workflow.Context, pi *InstanceRequest, taskEl
 	return nil
 }
 
-func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *InstanceRequest, el *bpmn.CallActivity) error {
+func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *api.InstanceRequest, el *bpmn.CallActivity) error {
 	logger := workflow.GetLogger(ctx)
-	cdf, err := bp.Exporter.GetProcDef(context.Background(), &GetProcDefRequest{
+	cdf, err := bp.Exporter.GetProcDef(context.Background(), &api.GetProcDefRequest{
 		ProcDefKey: el.CalledElement.ProcessId,
 		TenantID:   pi.TenantID,
 	})
-	cir := InstanceRequest{
+	cir := api.InstanceRequest{
 		ProcInst:    pi.ProcInst,
 		ProcDefKey:  cdf.Key,
 		ResourceKey: cdf.ResourceKey,
@@ -254,7 +273,7 @@ func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *InstanceRequest, el
 	if el.CalledElement.PropagateAllChildVariables {
 		cir.Variables = pi.Variables
 	} else {
-		cir.Variables = make(bpmn.Mappings)
+		cir.Variables = make(vars.Mapping)
 		for _, ot := range el.Outputs {
 			err = ot.OutputTarget(pi.Variables, cir.Variables)
 			if err != nil {
@@ -268,7 +287,7 @@ func (bp *BPMN) handleCallActivity(ctx workflow.Context, pi *InstanceRequest, el
 	}
 	ctx = workflow.WithChildOptions(ctx, cwo)
 
-	var result bpmn.Mappings
+	var result vars.Mapping
 	err = workflow.ExecuteChildWorkflow(ctx, workflow.GetInfo(ctx).WorkflowType.Name, cir).Get(ctx, &result)
 	if err != nil {
 		logger.Error("Parent execution received child execution failure.", "Error", err)
@@ -290,14 +309,14 @@ func loadDMN(resourceDir string, cdf *ent.DecisionReqDef) (*DMNLoader, error) {
 	return dmn, nil
 }
 
-func (bp *BPMN) handleBusinessRuleTask(ctx workflow.Context, pi *InstanceRequest, el *bpmn.BusinessRuleTask) error {
+func (bp *BPMN) handleBusinessRuleTask(ctx workflow.Context, pi *api.InstanceRequest, el *bpmn.BusinessRuleTask) error {
 
 	ao := DefaultActivityOption()
 	_ = el.ExtensionProperties.Decode(&ao) // ignore error
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	var variables bpmn.Mappings
-	err := workflow.ExecuteActivity(ctx, bp.Activity.BusinessRuleTaskActivity, BusinessRuleTaskActivityRequest{
+	var variables vars.Mapping
+	err := workflow.ExecuteActivity(ctx, bp.Activity.BusinessRuleTaskActivity, api.BusinessRuleTaskActivityRequest{
 		InstanceRequest: pi,
 		Element:         el,
 	}).Get(ctx, &variables)

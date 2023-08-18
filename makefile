@@ -32,5 +32,7 @@ genent:
 gengql:
 	go run codegen/gqlgen/gqlgen.go
 
-start-dev-server:
+.PHONY: start-temporal-server
+start-temporal-server:
+	# https://docs.temporal.io/cli webUI:http://localhost:8233
 	temporal server start-dev

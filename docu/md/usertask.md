@@ -1,20 +1,6 @@
 ---
-id: workflow
+id: usertask
 ---
-
-woocoos的流程引擎技术采用了标准化的BPMN2.0协议,结合新一代的工作流引擎Temporal,兼具业界标准及稳定性.
-
-## 流程定义
-
-BPMN的协议支持自定义扩展,我们对比了多家的格式协议,最终采用了Camunda 8的扩展方式,包括其比Camunda 7之前的扩展更加标准化.
-因此在流程定义工具Camunda Modeler中需要选择 8以上版本.
-
-### 表达式
-
-在Camunda 8以上的定义中,脚本化的方式已经很少见了,这符合我们对用户要求低的需求.
-为了解决动态性,引入了[FEEL language](https://learn-dmn-in-15-minutes.com/learn/the-feel-language.html),但该表达式极易上手,对用户不会造成学习难度
-
-## 流程部署
 
 ## 流程任务
 

@@ -2,8 +2,8 @@ package conv
 
 import (
 	"github.com/antonmedv/expr"
-	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"github.com/woocoos/workflow/pkg/spec/dmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"regexp"
 	"strings"
 	"unicode"
@@ -15,7 +15,7 @@ var ruleCache = make(map[string][]string)
 type DefaultConverter struct {
 }
 
-func (d *DefaultConverter) Match(rule string, input bpmn.Mappings) (bool, error) {
+func (d *DefaultConverter) Match(rule string, input vars.Mapping) (bool, error) {
 	if strings.HasPrefix(rule, "=") {
 		rule = strings.TrimPrefix(rule, "=")
 	}
@@ -26,7 +26,7 @@ func (d *DefaultConverter) Match(rule string, input bpmn.Mappings) (bool, error)
 	return v.(bool), nil
 }
 
-func (d *DefaultConverter) Eval(rule string, input bpmn.Mappings) (any, error) {
+func (d *DefaultConverter) Eval(rule string, input vars.Mapping) (any, error) {
 	if strings.HasPrefix(rule, "=") {
 		rule = strings.TrimPrefix(rule, "=")
 	}

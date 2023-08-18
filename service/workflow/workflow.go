@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/woocoos/entco/schemax"
 	"github.com/woocoos/workflow/ent/procdef"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/engine"
 	"go.temporal.io/sdk/workflow"
 	"path/filepath"
@@ -13,12 +14,12 @@ import (
 
 // Definition temporal workflow definition.
 type Definition struct {
-	engine.Exporter
+	api.Exporter
 	Service *Service
 }
 
 // BPMNWorkflowDef is entry point of workflow.
-func (def *Definition) BPMNWorkflowDef(ctx workflow.Context, pi engine.InstanceRequest) error {
+func (def *Definition) BPMNWorkflowDef(ctx workflow.Context, pi api.InstanceRequest) error {
 	if pi.ResourceKey == "" {
 		dr, err := def.Service.Db.ProcDef.Query().Where(procdef.ID(pi.ProcDefID)).
 			Only(schemax.SkipTenantPrivacy(context.Background()))

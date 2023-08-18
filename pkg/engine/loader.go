@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/xml"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"github.com/woocoos/workflow/pkg/spec/dmn"
@@ -89,7 +90,7 @@ func findSequenceFlows(sequenceFlows []*bpmn.SequenceFlow, ids []string) (vals [
 	return vals
 }
 
-func flowFilter(flows []*bpmn.SequenceFlow, inst *InstanceRequest) (ret []*bpmn.SequenceFlow, err error) {
+func flowFilter(flows []*bpmn.SequenceFlow, inst *api.InstanceRequest) (ret []*bpmn.SequenceFlow, err error) {
 	for _, flow := range flows {
 		if flow.ConditionExpression != nil {
 			out, err := flow.ConditionExpression.Evaluate(inst.Variables)

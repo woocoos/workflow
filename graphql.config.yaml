@@ -1,0 +1,10 @@
+projects:
+  main:
+    schema: "api/graphql/*.graphql"
+    documents:
+      - "api/graphql/*.graphql"
+  web:
+    schema: "api/graphql/*.graphql"
+    documents:
+      - "api/graphql/*.graphql"
+      - "web/src/**/*.graphql"

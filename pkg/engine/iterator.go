@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"sync"
 )
@@ -16,7 +17,7 @@ type Iterator struct {
 	queue []bpmn.Elementor
 	mu    sync.RWMutex
 
-	Request *InstanceRequest
+	Request *api.InstanceRequest
 	// 针对当前节点的处理函数
 	CurrentHandler func(it *Iterator, ele bpmn.Elementor) (err error)
 	// 针对当前队列中的全部元素的处理函数,一般用于消息型网关

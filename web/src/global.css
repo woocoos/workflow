@@ -1,0 +1,18 @@
+body {
+  margin: 0;
+}
+
+.ant-pro .ant-pro-layout .ant-pro-layout-container .ant-pro-layout-content {
+  /* background: #f0f2f5; */
+  min-height: calc(100vh - 56px - 124px);
+}
+
+.ant-pro-page-container-children-container {
+  padding-block: 16px;
+  padding-inline: 16px;
+}
+
+.ant-pro-page-container .ant-pro-page-container-warp-page-header {
+  padding-inline-start: 16px;
+  padding-inline-end: 16px;
+}

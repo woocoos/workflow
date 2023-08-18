@@ -1,7 +1,9 @@
 package bpmn
 
 import (
+	"errors"
 	"fmt"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"strconv"
 	"strings"
 )
@@ -9,6 +11,22 @@ import (
 type TaskDefinition struct {
 	TypeName string `xml:"type,attr"`
 	Retries  string `xml:"retries,attr"`
+}
+
+func (t TaskDefinition) GetType() (string, error) {
+	if t.TypeName == "" {
+		return "", errors.New("task type is empty")
+	}
+	val, err := Convert.Eval(t.TypeName, nil)
+	if err != nil {
+		return "", fmt.Errorf("[TaskDefinition.GetType]failed to evaluate expression %s: %w", t.TypeName, err)
+	}
+	switch v := val.(type) {
+	case string:
+		return v, nil
+	default:
+		return "", fmt.Errorf("task type %s is not string", t.TypeName)
+	}
 }
 
 func (t TaskDefinition) GetRetries() (retries int, err error) {
@@ -49,7 +67,7 @@ type Output struct {
 	Target string `xml:"target,attr" xml:",innerxml"`
 }
 
-func (o Output) OutputTarget(src, tar Mappings) error {
+func (o Output) OutputTarget(src, tar vars.Mapping) error {
 	v, err := Convert.Eval(o.Source, src)
 	if err != nil {
 		return err
@@ -78,11 +96,11 @@ func (a AssignmentDefinition) CountAssignees() (count int) {
 	return
 }
 
-func (a AssignmentDefinition) GetAssignee(vars Mappings) (string, error) {
+func (a AssignmentDefinition) GetAssignee(input vars.Mapping) (string, error) {
 	if !IsFormal(a.Assignee) {
 		return a.Assignee, nil
 	}
-	v, err := Convert.Eval(a.Assignee, vars)
+	v, err := Convert.Eval(a.Assignee, input)
 	if err != nil {
 		return "", fmt.Errorf("failed to evaluate assignee: %w", err)
 	}
@@ -94,22 +112,22 @@ func (a AssignmentDefinition) GetAssignee(vars Mappings) (string, error) {
 	return ret[0], nil
 }
 
-func (a AssignmentDefinition) GetCandidateGroups(vars Mappings) ([]string, error) {
+func (a AssignmentDefinition) GetCandidateGroups(input vars.Mapping) ([]string, error) {
 	if !IsFormal(a.CandidateGroups) {
 		return strings.Split(a.CandidateGroups, ","), nil
 	}
-	v, err := Convert.Eval(a.CandidateGroups, vars)
+	v, err := Convert.Eval(a.CandidateGroups, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate candidate groups: %w", err)
 	}
 	return a.ConvertValue(v)
 }
 
-func (a AssignmentDefinition) GetCandidateUsers(vars Mappings) ([]string, error) {
+func (a AssignmentDefinition) GetCandidateUsers(input vars.Mapping) ([]string, error) {
 	if !IsFormal(a.CandidateUsers) {
 		return strings.Split(a.CandidateUsers, ","), nil
 	}
-	v, err := Convert.Eval(a.CandidateUsers, vars)
+	v, err := Convert.Eval(a.CandidateUsers, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate candidate users: %w", err)
 	}

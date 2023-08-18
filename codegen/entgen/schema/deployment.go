@@ -24,6 +24,7 @@ func (Deployment) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entsql.Annotation{Table: "act_deployment"},
 		entgql.QueryField(),
+		entgql.RelayConnection(),
 		entgql.Mutations(entgql.MutationUpdate(), entgql.MutationCreate()),
 		schemax.TenantField("tenant_id"),
 	}

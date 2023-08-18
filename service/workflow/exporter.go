@@ -13,14 +13,14 @@ import (
 	"github.com/woocoos/workflow/ent/orguser"
 	"github.com/woocoos/workflow/ent/procdef"
 	entask "github.com/woocoos/workflow/ent/task"
-	"github.com/woocoos/workflow/pkg/engine"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/spec/bpmn"
 	"go.temporal.io/sdk/activity"
 	"go.uber.org/zap"
 )
 
 var (
-	_ engine.Exporter = (*DbExport)(nil)
+	_ api.Exporter = (*DbExport)(nil)
 
 	ErrTenantIDRequire  = errors.New("tenant id is required")
 	ErrUserIDRequire    = errors.New("user id is required")
@@ -41,11 +41,11 @@ func AlternateSchema() ent.Option {
 	})
 }
 
-func (e *DbExport) GetProcDef(ctx context.Context, req *engine.GetProcDefRequest) (*ent.ProcDef, error) {
+func (e *DbExport) GetProcDef(ctx context.Context, req *api.GetProcDefRequest) (*ent.ProcDef, error) {
 	return e.Service.Db.ProcDef.Query().Where(procdef.Key(req.ProcDefKey), procdef.TenantID(req.TenantID)).First(ctx)
 }
 
-func (e *DbExport) GetDecisionReqDef(ctx context.Context, req *engine.GetDecisionReqDefRequest) (*ent.DecisionReqDef, error) {
+func (e *DbExport) GetDecisionReqDef(ctx context.Context, req *api.GetDecisionReqDefRequest) (*ent.DecisionReqDef, error) {
 	def, err := e.Service.Db.DecisionDef.Query().Where(decisiondef.Key(req.DecisionDefKey), decisiondef.TenantID(req.OrgID)).
 		Order(ent.Desc(decisiondef.FieldVersion)).WithReqDef().First(ctx)
 	if err != nil {
@@ -55,34 +55,34 @@ func (e *DbExport) GetDecisionReqDef(ctx context.Context, req *engine.GetDecisio
 }
 
 // GetUserIDs 根据用户名称获取用户ID
-func (e *DbExport) GetUserIDs(ctx context.Context, req *engine.GetUserIDsRequest) (*engine.GetUserIDResponse, error) {
+func (e *DbExport) GetUserIDs(ctx context.Context, req *api.GetUserIDsRequest) (*api.GetUserIDResponse, error) {
 	ids, err := e.Service.Db.OrgUser.Query().Where(orguser.OrgID(req.OrgID),
 		orguser.DisplayNameIn(req.Names...)).Select(orguser.FieldUserID).Ints(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &engine.GetUserIDResponse{UserIDs: ids}, nil
+	return &api.GetUserIDResponse{UserIDs: ids}, nil
 }
 
-func (e *DbExport) GetGroupIDs(ctx context.Context, req *engine.GetGroupIDsRequest) (*engine.GetGroupIDResponse, error) {
+func (e *DbExport) GetGroupIDs(ctx context.Context, req *api.GetGroupIDsRequest) (*api.GetGroupIDResponse, error) {
 	ids, err := e.Service.Db.OrgRole.Query().Where(orgrole.OrgID(req.OrgID),
 		orgrole.NameIn(req.Names...), orgrole.KindEQ(orgrole.KindGroup)).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &engine.GetGroupIDResponse{GroupIDs: ids}, nil
+	return &api.GetGroupIDResponse{GroupIDs: ids}, nil
 }
 
-func (e *DbExport) GetGroupUsers(ctx context.Context, req *engine.GetGroupUserRequest) (*engine.GetGroupUserResponse, error) {
+func (e *DbExport) GetGroupUsers(ctx context.Context, req *api.GetGroupUserRequest) (*api.GetGroupUserResponse, error) {
 	ids, err := e.Service.Db.OrgRoleUser.Query().Where(orgroleuser.OrgID(req.TenantID),
 		orgroleuser.HasOrgRoleWith(orgrole.NameEQ(req.Name))).IDs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &engine.GetGroupUserResponse{UserIDs: ids}, nil
+	return &api.GetGroupUserResponse{UserIDs: ids}, nil
 }
 
-func (e *DbExport) getAssignee(ctx context.Context, pi *engine.InstanceRequest, taskEle *bpmn.UserTask) (
+func (e *DbExport) getAssignee(ctx context.Context, pi *api.InstanceRequest, taskEle *bpmn.UserTask) (
 	name string, id int, err error) {
 	if taskEle.Assignment.Assignee == "" {
 		return
@@ -91,7 +91,7 @@ func (e *DbExport) getAssignee(ctx context.Context, pi *engine.InstanceRequest, 
 	if err != nil {
 		return
 	}
-	resp, err := e.GetUserIDs(ctx, &engine.GetUserIDsRequest{Names: []string{name}, OrgID: pi.TenantID})
+	resp, err := e.GetUserIDs(ctx, &api.GetUserIDsRequest{Names: []string{name}, OrgID: pi.TenantID})
 	if err != nil {
 		return
 	}
@@ -103,7 +103,7 @@ func (e *DbExport) getAssignee(ctx context.Context, pi *engine.InstanceRequest, 
 	return
 }
 
-func (e *DbExport) getCandidateGroups(ctx context.Context, pi *engine.InstanceRequest, taskEle *bpmn.UserTask) (
+func (e *DbExport) getCandidateGroups(ctx context.Context, pi *api.InstanceRequest, taskEle *bpmn.UserTask) (
 	ids []int, err error) {
 	logger := activity.GetLogger(ctx)
 	if taskEle.Assignment.CandidateGroups == "" {
@@ -113,7 +113,7 @@ func (e *DbExport) getCandidateGroups(ctx context.Context, pi *engine.InstanceRe
 	if err != nil {
 		return nil, err
 	}
-	resp, err := e.GetGroupIDs(ctx, &engine.GetGroupIDsRequest{Names: cgs, OrgID: pi.TenantID})
+	resp, err := e.GetGroupIDs(ctx, &api.GetGroupIDsRequest{Names: cgs, OrgID: pi.TenantID})
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (e *DbExport) getCandidateGroups(ctx context.Context, pi *engine.InstanceRe
 	return
 }
 
-func (e *DbExport) getCandidateUsers(ctx context.Context, pi *engine.InstanceRequest, taskEle *bpmn.UserTask) (
+func (e *DbExport) getCandidateUsers(ctx context.Context, pi *api.InstanceRequest, taskEle *bpmn.UserTask) (
 	ids []int, err error) {
 	logger := activity.GetLogger(ctx)
 	if taskEle.Assignment.CandidateUsers == "" {
@@ -135,7 +135,7 @@ func (e *DbExport) getCandidateUsers(ctx context.Context, pi *engine.InstanceReq
 	if err != nil {
 		return nil, err
 	}
-	resp, err := e.GetUserIDs(ctx, &engine.GetUserIDsRequest{Names: cus, OrgID: pi.TenantID})
+	resp, err := e.GetUserIDs(ctx, &api.GetUserIDsRequest{Names: cus, OrgID: pi.TenantID})
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (e *DbExport) getCandidateUsers(ctx context.Context, pi *engine.InstanceReq
 //	1.如果任务已经明确指了Assignee,则将成员数+1;
 //	2.如果只设定了候选组,则成员数+1;
 //	3.如果是指定了候选人且任务为多实例,则成员数及未完成数初始化总数;
-func (e *DbExport) CreateUserTask(ctx context.Context, pi *engine.InstanceRequest, taskEle *bpmn.UserTask) (tk *ent.Task, err error) {
+func (e *DbExport) CreateUserTask(ctx context.Context, pi *api.InstanceRequest, taskEle *bpmn.UserTask) (tk *ent.Task, err error) {
 	exec := activity.GetInfo(ctx).WorkflowExecution
 	if taskEle.Assignment == nil {
 		return nil, nil

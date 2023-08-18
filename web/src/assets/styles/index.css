@@ -1,0 +1,11 @@
+/* 避免编辑器字体被修改 */
+.adminx-editor * {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+/* 处理弹出iframe的样式 */
+.modalIframe {
+  width: 100%;
+  height: 60vh;
+  border: 0 none;
+}

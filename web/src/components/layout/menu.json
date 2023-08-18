@@ -1,0 +1,47 @@
+[
+  {
+    "name": "工作流",
+    "icon": "",
+    "children": [
+      {
+        "path": "/dashboard",
+        "name": "欢迎"
+      },
+      {
+        "path": "/task",
+        "name": "任务"
+      },
+      {
+        "name": "工作流管理",
+        "children": [
+          {
+            "path": "/workflow/process",
+            "name": "流程定义"
+          },
+          {
+            "path": "/workflow/decision",
+            "name": "决策定义"
+          },
+          {
+            "path": "/workflow/case",
+            "name": "流程实例"
+          },
+          {
+            "path": "/workflow/deployment",
+            "name": "流程部署"
+          }
+        ]
+      },
+      {
+        "path": "/engine",
+        "name": "流程引擎",
+        "children": [
+          {
+            "path": "/engine/workflow",
+            "name": "工作流列表"
+          }
+        ]
+      }
+    ]
+  }
+]

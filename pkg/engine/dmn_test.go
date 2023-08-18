@@ -3,28 +3,28 @@ package engine
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/woocoos/workflow/pkg/spec/bpmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"testing"
 )
 
 func Test_crossProduct(t *testing.T) {
 	type args struct {
-		left  bpmn.Mappings
-		right bpmn.Mappings
+		left  vars.Mapping
+		right vars.Mapping
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    []bpmn.Mappings
+		want    []vars.Mapping
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name: "single",
 			args: args{
-				left:  bpmn.Mappings{"a": 1, "b": "2"},
-				right: bpmn.Mappings{"c": 2, "d": "3"},
+				left:  vars.Mapping{"a": 1, "b": "2"},
+				right: vars.Mapping{"c": 2, "d": "3"},
 			},
-			want: []bpmn.Mappings{
+			want: []vars.Mapping{
 				{
 					"a": 1,
 					"b": "2",
@@ -37,13 +37,13 @@ func Test_crossProduct(t *testing.T) {
 		{
 			name: "multi",
 			args: args{
-				left: bpmn.Mappings{
-					"a": bpmn.Mappings{"b1": 1, "b2": 2},
-					"b": bpmn.Mappings{"b1": 2, "b2": 3},
+				left: vars.Mapping{
+					"a": vars.Mapping{"b1": 1, "b2": 2},
+					"b": vars.Mapping{"b1": 2, "b2": 3},
 				},
-				right: bpmn.Mappings{"c": 3, "d": 4},
+				right: vars.Mapping{"c": 3, "d": 4},
 			},
-			want: []bpmn.Mappings{
+			want: []vars.Mapping{
 				{
 					"b1": 1,
 					"b2": 2,
@@ -62,16 +62,16 @@ func Test_crossProduct(t *testing.T) {
 		{
 			name: "multi",
 			args: args{
-				left: bpmn.Mappings{
-					"a": bpmn.Mappings{"a1": 1, "a2": 2},
-					"b": bpmn.Mappings{"a1": 2, "a2": 3},
+				left: vars.Mapping{
+					"a": vars.Mapping{"a1": 1, "a2": 2},
+					"b": vars.Mapping{"a1": 2, "a2": 3},
 				},
-				right: bpmn.Mappings{
-					"c": bpmn.Mappings{"b1": 3, "b2": 4},
-					"d": bpmn.Mappings{"b1": 5, "b2": 6},
+				right: vars.Mapping{
+					"c": vars.Mapping{"b1": 3, "b2": 4},
+					"d": vars.Mapping{"b1": 5, "b2": 6},
 				},
 			},
-			want: []bpmn.Mappings{
+			want: []vars.Mapping{
 				{"a1": 1, "a2": 2, "b1": 3, "b2": 4},
 				{"a1": 1, "a2": 2, "b1": 5, "b2": 6},
 				{"a1": 2, "a2": 3, "b1": 3, "b2": 4},

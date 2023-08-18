@@ -12,68 +12,59 @@ import (
 	"entgo.io/contrib/entgql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/hashicorp/go-multierror"
-	"github.com/woocoos/workflow/ent/decisiondef"
-	"github.com/woocoos/workflow/ent/decisionreqdef"
-	"github.com/woocoos/workflow/ent/deployment"
-	"github.com/woocoos/workflow/ent/identitylink"
-	"github.com/woocoos/workflow/ent/orgrole"
-	"github.com/woocoos/workflow/ent/orguser"
-	"github.com/woocoos/workflow/ent/procdef"
-	"github.com/woocoos/workflow/ent/procinst"
-	"github.com/woocoos/workflow/ent/task"
 )
 
 // GlobalID returns the global identifier for the given DecisionDef node.
 func (dd *DecisionDef) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", decisiondef.Table, dd.ID)
+	id := fmt.Sprintf("DecisionDef:%d", dd.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given DecisionReqDef node.
 func (drd *DecisionReqDef) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", decisionreqdef.Table, drd.ID)
+	id := fmt.Sprintf("DecisionReqDef:%d", drd.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given Deployment node.
 func (d *Deployment) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", deployment.Table, d.ID)
+	id := fmt.Sprintf("Deployment:%d", d.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given IdentityLink node.
 func (il *IdentityLink) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", identitylink.Table, il.ID)
+	id := fmt.Sprintf("IdentityLink:%d", il.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given OrgRole node.
 func (or *OrgRole) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", orgrole.Table, or.ID)
+	id := fmt.Sprintf("OrgRole:%d", or.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given OrgUser node.
 func (ou *OrgUser) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", orguser.Table, ou.ID)
+	id := fmt.Sprintf("OrgUser:%d", ou.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given ProcDef node.
 func (pd *ProcDef) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", procdef.Table, pd.ID)
+	id := fmt.Sprintf("ProcDef:%d", pd.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given ProcInst node.
 func (pi *ProcInst) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", procinst.Table, pi.ID)
+	id := fmt.Sprintf("ProcInst:%d", pi.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
 // GlobalID returns the global identifier for the given Task node.
 func (t *Task) GlobalID(context.Context) (string, error) {
-	id := fmt.Sprintf("%s:%d", task.Table, t.ID)
+	id := fmt.Sprintf("Task:%d", t.ID)
 	return base64.StdEncoding.EncodeToString([]byte(id)), nil
 }
 
@@ -94,23 +85,23 @@ func FromGlobalID(s string) (*ResolvedGlobal, error) {
 // GlobalID returns the global identifier for the given type and id.
 func GlobalID(tp, id string) (string, error) {
 	switch tp {
-	case decisiondef.Table:
+	case "DecisionDef":
 		break
-	case decisionreqdef.Table:
+	case "DecisionReqDef":
 		break
-	case deployment.Table:
+	case "Deployment":
 		break
-	case identitylink.Table:
+	case "IdentityLink":
 		break
-	case orgrole.Table:
+	case "OrgRole":
 		break
-	case orguser.Table:
+	case "OrgUser":
 		break
-	case procdef.Table:
+	case "ProcDef":
 		break
-	case procinst.Table:
+	case "ProcInst":
 		break
-	case task.Table:
+	case "Task":
 		break
 	default:
 		return "", fmt.Errorf("invalid type %q", tp)

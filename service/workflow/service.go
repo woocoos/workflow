@@ -12,9 +12,10 @@ import (
 	"github.com/woocoos/workflow/ent/orgapp"
 	"github.com/woocoos/workflow/ent/procdef"
 	"github.com/woocoos/workflow/ent/procinst"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/engine"
 	"github.com/woocoos/workflow/pkg/spec"
-	"github.com/woocoos/workflow/pkg/spec/bpmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"go.temporal.io/sdk/client"
 	"path/filepath"
 	"strconv"
@@ -125,11 +126,11 @@ func (s *Service) CreateAndRunProcessInstance(ctx context.Context, input model.S
 		}
 	}
 
-	inst := engine.InstanceRequest{
+	inst := api.InstanceRequest{
 		ProcDefKey:  pd.Key,
 		ProcInst:    pi,
 		ResourceKey: pd.ResourceKey,
-		Variables:   make(bpmn.Mappings),
+		Variables:   make(vars.Mapping),
 	}
 	for _, variable := range input.Variables {
 		inst.Variables[variable.Name] = variable.Value

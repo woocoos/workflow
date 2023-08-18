@@ -9,8 +9,9 @@ import (
 	"github.com/woocoos/workflow/ent"
 	"github.com/woocoos/workflow/ent/identitylink"
 	"github.com/woocoos/workflow/ent/procinst"
+	"github.com/woocoos/workflow/pkg/api"
 	"github.com/woocoos/workflow/pkg/engine"
-	"github.com/woocoos/workflow/pkg/spec/bpmn"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"github.com/woocoos/workflow/test"
 	wfsuite "github.com/woocoos/workflow/test/testsuite"
 	"go.temporal.io/sdk/activity"
@@ -22,7 +23,7 @@ import (
 	_ "github.com/woocoos/workflow/ent/runtime"
 )
 
-func SetInstanceRequestDef(ir *engine.InstanceRequest, def *ent.ProcDef) {
+func SetInstanceRequestDef(ir *api.InstanceRequest, def *ent.ProcDef) {
 	if def.ID != 0 {
 		ir.ProcDefID = def.ID
 	}
@@ -72,25 +73,25 @@ func TestTestSuite(t *testing.T) {
 	suite.Run(t, &TestSuite{})
 }
 
-func (ts *TestSuite) newBPMN(id string, exporter engine.Exporter) *engine.BPMN {
+func (ts *TestSuite) newBPMN(id string, exporter api.Exporter) *engine.BPMN {
 	return engine.NewBPMN(engine.WithID(id), engine.WithExporter(exporter),
 		engine.WithResourceDir(ts.Service.ResourceDir))
 }
 
 func (ts *TestSuite) Test_SimpleTask() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			TenantID: 1,
 			Status:   procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{},
+		Variables: vars.Mapping{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-task", TenantID: wf.TenantID})
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "simple-task", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	a := ts.newBPMN(wf.ProcDefKey, ts.def)
-	a.Handlers.RegistryHandler("Sleep", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("Sleep", func(ctx context.Context, vars vars.Mapping) (vars.Mapping, error) {
 		time.Sleep(time.Second * 2)
 		return nil, nil
 	})
@@ -102,18 +103,18 @@ func (ts *TestSuite) Test_SimpleTask() {
 
 func (ts *TestSuite) Test_SimpleUserTask_WrongUser() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1001,
 			ProcDefID: 1,
 			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"assignee": "user1",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	env.RegisterDelayedCallback(func() {
@@ -139,18 +140,18 @@ func (ts *TestSuite) Test_SimpleUserTask_WrongUser() {
 
 func (ts *TestSuite) Test_SimpleUserTask() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1001,
 			ProcDefID: 1,
 			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"assignee": "user1",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "simple-user-task", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	env.RegisterDelayedCallback(func() {
@@ -175,32 +176,32 @@ func (ts *TestSuite) Test_SimpleUserTask() {
 
 func (ts *TestSuite) Test_ParallelGateway() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{},
+		Variables: vars.Mapping{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "parallel-gateway", TenantID: wf.TenantID})
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "parallel-gateway", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
-	a.Handlers.RegistryHandler("step1", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step1", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("step1", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step1", "vars", input)
+		return vars.Mapping{
 			"step1": "step1",
 		}, nil
 	})
-	a.Handlers.RegistryHandler("step2", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step2", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("step2", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step2", "vars", input)
+		return vars.Mapping{
 			"step2": "step2",
 		}, nil
 	})
-	a.Handlers.RegistryHandler("step3", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step3", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("step3", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step3", "vars", input)
+		return vars.Mapping{
 			"step3": "step3",
 		}, nil
 	})
@@ -212,26 +213,26 @@ func (ts *TestSuite) Test_ParallelGateway() {
 
 func (ts *TestSuite) Test_ExclusiveGateway() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"price": 1.5,
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "exclusive-gateway", TenantID: wf.TenantID})
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "exclusive-gateway", TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
-	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step1", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step1", "vars", input)
+		return vars.Mapping{
 			"step1": "step1",
 		}, nil
 	})
-	a.Handlers.RegistryHandler("task-b", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("task-b", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
 		assert.Fail(ts.T(), "should not be called")
 		return nil, nil
 	})
@@ -243,25 +244,25 @@ func (ts *TestSuite) Test_ExclusiveGateway() {
 
 func (ts *TestSuite) Test_ServiceTaskInputOutput() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"price": 1.5,
 			"city":  "beijing",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "service-task-input-output",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "service-task-input-output",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
 	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
-	a.Handlers.RegistryHandler("input-task-1", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step1", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("input-task-1", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step1", "vars", input)
+		return vars.Mapping{
 			"step1": "step1",
 		}, nil
 	})
@@ -273,31 +274,31 @@ func (ts *TestSuite) Test_ServiceTaskInputOutput() {
 
 func (ts *TestSuite) Test_MessageTimer() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"key": "chan1",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "message-timer",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
 	a := ts.newBPMN(wf.ProcDefKey, &ts.def)
 
-	a.Handlers.RegistryHandler("ask", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("ask", "vars", vars)
+	a.Handlers.RegistryHandler("ask", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("ask", "vars", input)
 		return nil, nil
 	})
-	a.Handlers.RegistryHandler("win", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("win", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
 		return nil, fmt.Errorf("should not be called")
 	})
 	checkLose := false
-	a.Handlers.RegistryHandler("lose", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step1", "vars", vars)
+	a.Handlers.RegistryHandler("lose", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step1", "vars", input)
 		checkLose = true
 		return nil, nil
 	})
@@ -312,32 +313,32 @@ func (ts *TestSuite) Test_MessageTimer() {
 
 func (ts *TestSuite) Test_MessageTimerWin() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"key": "key",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-timer",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "message-timer",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 
 	SetInstanceRequestDef(&wf, pd)
 	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
-	a.Handlers.RegistryHandler("ask", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("ask", "vars", vars)
+	a.Handlers.RegistryHandler("ask", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("ask", "vars", input)
 		return nil, nil
 	})
 	checkWin := false
-	a.Handlers.RegistryHandler("win", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("ask", "vars", vars)
+	a.Handlers.RegistryHandler("win", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("ask", "vars", input)
 		checkWin = true
 		return nil, nil
 	})
-	a.Handlers.RegistryHandler("lose", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("lose", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
 		return nil, fmt.Errorf("should not be called")
 	})
 	env.RegisterDelayedCallback(func() {
@@ -353,52 +354,52 @@ func (ts *TestSuite) Test_MessageTimerWin() {
 
 func (ts *TestSuite) Test_MessageLoop() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			Status: procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"key": "key",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "message-loop",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "message-loop",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
 
 	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 	loop := 0
-	a.Handlers.RegistryHandler("do-nothing", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("do-nothing", func(ctx context.Context, vars vars.Mapping) (vars.Mapping, error) {
 		loop++
 		activity.GetLogger(ctx).Info("do-nothing", "loop", loop)
 		return nil, nil
 	})
-	a.Handlers.RegistryHandler("validate", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("validate", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
 		if loop > 2 {
-			return bpmn.Mappings{
+			return vars.Mapping{
 				"engineValidationAttempts": true,
 				"hasReachedMaxAttempts":    true,
 			}, nil
 		}
-		return bpmn.Mappings{
+		return vars.Mapping{
 			"engineValidationAttempts": false,
 			"hasReachedMaxAttempts":    false,
 		}, nil
 	})
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("key", bpmn.Mappings{
+		env.SignalWorkflow("key", vars.Mapping{
 			"engineValidationAttempts": true,
 			"hasReachedMaxAttempts":    false,
 		})
 	}, time.Second*1)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("key", bpmn.Mappings{
+		env.SignalWorkflow("key", vars.Mapping{
 			"engineValidationAttempts": true,
 			"hasReachedMaxAttempts":    false,
 		})
 	}, time.Second*2)
 	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow("key", bpmn.Mappings{
+		env.SignalWorkflow("key", vars.Mapping{
 			"engineValidationAttempts": true,
 			"hasReachedMaxAttempts":    false,
 		})
@@ -412,19 +413,19 @@ func (ts *TestSuite) Test_MessageLoop() {
 // TODO 目前由于子流程与主流程为同一个实例,在测试环境中,无法监控到子流程的执行,而导致测试失败
 func (ts *TestSuite) Test_CallActivity() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
 			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"assignee": "user1",
 			"price":    1,
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "call-activity",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "call-activity",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 
@@ -446,13 +447,13 @@ func (ts *TestSuite) Test_CallActivity() {
 
 	a := ts.newBPMN(wf.ProcDefKey, ts.def)
 
-	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
-		activity.GetLogger(ctx).Info("step1", "vars", vars)
-		return bpmn.Mappings{
+	a.Handlers.RegistryHandler("task-a", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
+		activity.GetLogger(ctx).Info("step1", "vars", input)
+		return vars.Mapping{
 			"step1": "step1",
 		}, nil
 	})
-	a.Handlers.RegistryHandler("task-b", func(ctx context.Context, vars bpmn.Mappings) (bpmn.Mappings, error) {
+	a.Handlers.RegistryHandler("task-b", func(ctx context.Context, input vars.Mapping) (vars.Mapping, error) {
 		assert.Fail(ts.T(), "should not be called")
 		return nil, nil
 	})
@@ -465,16 +466,16 @@ func (ts *TestSuite) Test_CallActivity() {
 // MultiUserTask is a multi candidate users task. User1 is not allow user.
 func (ts *TestSuite) Test_MultiUserTask() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
 			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{},
+		Variables: vars.Mapping{},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "multi-user-task",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "multi-user-task",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)
@@ -526,19 +527,19 @@ func (ts *TestSuite) Test_MultiUserTask() {
 
 func (ts *TestSuite) Test_BusinessRule() {
 	env := ts.NewTestWorkflowEnvironment()
-	wf := engine.InstanceRequest{
+	wf := api.InstanceRequest{
 		ProcInst: &ent.ProcInst{
 			ID:        1,
 			ProcDefID: 1,
 			TenantID:  1,
 			Status:    procinst.StatusReady,
 		},
-		Variables: bpmn.Mappings{
+		Variables: vars.Mapping{
 			"amount":          100,
 			"invoiceCategory": "Misc",
 		},
 	}
-	pd, err := ts.def.GetProcDef(context.Background(), &engine.GetProcDefRequest{ProcDefKey: "business-rule",
+	pd, err := ts.def.GetProcDef(context.Background(), &api.GetProcDefRequest{ProcDefKey: "business-rule",
 		TenantID: wf.TenantID})
 	ts.Require().NoError(err)
 	SetInstanceRequestDef(&wf, pd)

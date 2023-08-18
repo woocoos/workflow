@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/woocoos/workflow/ent"
-	"github.com/woocoos/workflow/pkg/spec/bpmn"
+	"github.com/woocoos/workflow/pkg/api"
+	"github.com/woocoos/workflow/pkg/spec/vars"
 	"strconv"
 )
 
@@ -12,12 +13,9 @@ type BpmnActivity struct {
 	Engine *BPMN
 }
 
-func (a *BpmnActivity) ServiceTaskActivity(ctx context.Context, req ServiceTaskActivityRequest) (bpmn.Mappings, error) {
-	typename := ""
-	if req.Element.TaskDefinition != nil {
-		typename = req.Element.TaskDefinition.TypeName
-	}
-	output := make(bpmn.Mappings)
+func (a *BpmnActivity) ServiceTaskActivity(ctx context.Context, req api.ServiceTaskActivityRequest) (vars.Mapping, error) {
+	typename := req.Element.TaskDefinition.TypeName
+	output := make(vars.Mapping)
 	hout, err := a.Engine.Handlers.RunHandler(ctx, typename, req.InstanceRequest.Variables)
 	if err != nil {
 		return nil, err
@@ -38,18 +36,21 @@ func (a *BpmnActivity) ServiceTaskActivity(ctx context.Context, req ServiceTaskA
 	return output, nil
 }
 
+func (a *BpmnActivity) HttpServiceTaskActivity(ctx context.Context, req api.ServiceTaskActivityRequest) (vars.Mapping, error) {
+	panic("implement me")
+}
+
 // CreateUserTaskActivity 创建用户任务,将任务信息返回到工作流引擎中.
-func (a *BpmnActivity) CreateUserTaskActivity(ctx context.Context, req UserTaskActivityRequest) (*ent.Task, error) {
+func (a *BpmnActivity) CreateUserTaskActivity(ctx context.Context, req api.UserTaskActivityRequest) (*ent.Task, error) {
 	return a.Engine.Exporter.CreateUserTask(ctx, req.InstanceRequest, req.Element)
 }
 
-func (a *BpmnActivity) BusinessRuleTaskActivity(ctx context.Context, req BusinessRuleTaskActivityRequest) (bpmn.Mappings, error) {
-	//logger := workflow.GetLogger(ctx)
+func (a *BpmnActivity) BusinessRuleTaskActivity(ctx context.Context, req api.BusinessRuleTaskActivityRequest) (vars.Mapping, error) {
 	if req.Element.CalledDecision == nil {
 		return nil, fmt.Errorf("called decision is nil: %s", req.Element.Id)
 	}
 
-	cdf, err := a.Engine.Exporter.GetDecisionReqDef(context.Background(), &GetDecisionReqDefRequest{
+	cdf, err := a.Engine.Exporter.GetDecisionReqDef(context.Background(), &api.GetDecisionReqDefRequest{
 		DecisionDefKey: req.Element.CalledDecision.DecisionId,
 		OrgID:          req.InstanceRequest.TenantID,
 	})
